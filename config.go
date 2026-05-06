@@ -3,17 +3,17 @@ package ceroflake
 import (
 	"time"
 
-	"github.com/crix/ceroflake/registry"
+	"github.com/from-cero/ceroflake/registry"
 )
 
 // Config holds the parameters for creating a Generator.
 type Config struct {
-	DatacenterID     uint8
-	IsProd           bool
-	Registry         registry.Registry
+	DatacenterID uint8
+	IsProd       bool
+	Registry     registry.Registry
 	// MaxClockDrift is how long Generate() will block waiting for a backward
 	// clock to recover before returning ErrClockBackward. Default: 5 ms.
-	MaxClockDrift    time.Duration
+	MaxClockDrift time.Duration
 }
 
 // Option is a functional option for Config.
