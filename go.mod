@@ -1,4 +1,4 @@
-module github.com/crix/ceroflake
+module github.com/from-cero/ceroflake
 
 go 1.25.5
 

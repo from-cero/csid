@@ -1,4 +1,4 @@
-package ceroflake_test
+package test
 
 import (
 	"context"
@@ -7,10 +7,9 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/from-cero/ceroflake"
+	"github.com/from-cero/ceroflake/registry"
 	goredis "github.com/redis/go-redis/v9"
-
-	"github.com/crix/ceroflake"
-	"github.com/crix/ceroflake/registry"
 )
 
 func newTestGen(t *testing.T, workerID uint8, opts ...ceroflake.Option) *ceroflake.Generator {
@@ -181,7 +180,12 @@ func TestRedisRegistry(t *testing.T) {
 	defer mr.Close()
 
 	client := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
-	defer client.Close()
+	defer func() {
+		err := client.Close()
+		if err != nil {
+			t.Errorf("redis client close: %v", err)
+		}
+	}()
 
 	reg := registry.Redis(client)
 	ctx := context.Background()
