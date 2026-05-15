@@ -1,9 +1,9 @@
-# CeroFlake — Library Design
+# Cero ID — Library Design
 
 ## Overview
 
-CeroFlake is a distributed 64-bit ID generator for Go, inspired by Twitter Snowflake.
-IDs are time-ordered, embeds routing metadata (datacenter, env, worker), and carry a
+Cero ID is a distributed 64-bit Snowflake ID generator library for Go.
+IDs are time-ordered, embed routing metadata (datacenter, env, worker), and carry a
 domain tag (entity type) so callers never need an out-of-band table to know what a
 raw ID refers to.
 
@@ -34,7 +34,7 @@ bit 63        0
 
 ## Public API
 
-### Package `ceroflake`
+### Package `ceroid`
 
 ```go
 // Construction
