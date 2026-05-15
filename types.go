@@ -1,10 +1,8 @@
-package crid
+package ceroid
 
 import "time"
 
 type ID int64
-
-type Node struct{}
 
 type Options struct {
 	Epoch    time.Time
