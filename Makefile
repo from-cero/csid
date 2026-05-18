@@ -18,3 +18,6 @@ lint-tools:
 
 lint:
 	golangci-lint run ./...
+
+example:
+	go run examples/main.go
