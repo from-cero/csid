@@ -74,31 +74,20 @@ func (n *Node) Generate() (ID, error) {
 
 	now := n.nowMs() // milliseconds since epoch
 
-	for now < n.lastMs { // clock backward issue
-		drift := n.lastMs - now
-		if drift > n.cfg.MaxClockDrift.Milliseconds() {
+	if now < n.lastMs { // clock backward issue
+		if n.lastMs-now > n.cfg.MaxClockDrift.Milliseconds() {
 			return 0, ErrClockBackward
 		}
-		n.mu.Unlock()
-		time.Sleep(time.Duration(drift) * time.Millisecond)
-		n.mu.Lock()
-		if n.closed {
-			return 0, ErrClosed
-		}
-		now = n.nowMs()
+		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
+		now = n.lastMs
 	}
 
 	if now == n.lastMs {
 		n.seq = (n.seq + 1) & n.c.maxSeq
 		if n.seq == 0 { // sequence exhausted for this ms
-			n.mu.Unlock()
 			for now <= n.lastMs {
 				time.Sleep(time.Millisecond)
 				now = n.nowMs()
-			}
-			n.mu.Lock()
-			if n.closed {
-				return 0, ErrClosed
 			}
 		}
 	} else {
