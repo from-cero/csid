@@ -39,10 +39,12 @@ func NewNode(ctx context.Context, r registry.Registry, opt ...Option) (*Node, er
 	}
 
 	return &Node{
-		r:    r,
-		node: nodeID,
-		cfg:  cfg,
-		c:    c,
+		r:      r,
+		node:   nodeID,
+		lastMs: 0,
+		seq:    0,
+		cfg:    cfg,
+		c:      c,
 	}, nil
 }
 
@@ -72,29 +74,36 @@ func (n *Node) Generate() (ID, error) {
 
 	now := n.nowMs() // milliseconds since epoch
 
-	if now < n.lastMs { // clock backward issue
-		if n.lastMs-now > n.cfg.MaxClockDrift.Milliseconds() {
+	for now < n.lastMs { // clock backward issue
+		drift := n.lastMs - now
+		if drift > n.cfg.MaxClockDrift.Milliseconds() {
 			return 0, ErrClockBackward
 		}
-		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
-		now = n.lastMs
+		n.mu.Unlock()
+		time.Sleep(time.Duration(drift) * time.Millisecond)
+		n.mu.Lock()
+		if n.closed {
+			return 0, ErrClosed
+		}
+		now = n.nowMs()
 	}
 
 	if now == n.lastMs {
 		n.seq = (n.seq + 1) & n.c.maxSeq
 		if n.seq == 0 { // sequence exhausted for this ms
+			n.mu.Unlock()
 			for now <= n.lastMs {
 				time.Sleep(time.Millisecond)
 				now = n.nowMs()
+			}
+			n.mu.Lock()
+			if n.closed {
+				return 0, ErrClosed
 			}
 		}
 	} else {
 		n.seq = 0
 	}
-	if now < n.lastMs {
-		return 0, ErrClockBackward
-	}
-
 	n.lastMs = now
 
 	var idI64 int64
