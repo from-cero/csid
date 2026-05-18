@@ -10,6 +10,7 @@ import (
 
 type Node struct {
 	mu     sync.Mutex
+	closed bool
 	r      registry.Registry
 	node   int64
 	lastMs int64
@@ -46,6 +47,9 @@ func NewNode(ctx context.Context, r registry.Registry, opt ...Option) (*Node, er
 }
 
 func (n *Node) Close(ctx context.Context) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.closed = true
 	return n.r.Release(ctx)
 }
 
@@ -62,12 +66,15 @@ func (n *Node) Generate() (ID, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	if n.closed {
+		return 0, ErrClosed
+	}
+
 	now := n.nowMs() // milliseconds since epoch
-	var id ID
 
 	if now < n.lastMs { // clock backward issue
 		if n.lastMs-now > n.cfg.MaxClockDrift.Milliseconds() {
-			return id, ErrClockBackward
+			return 0, ErrClockBackward
 		}
 		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
 		now = n.lastMs
@@ -85,16 +92,16 @@ func (n *Node) Generate() (ID, error) {
 		n.seq = 0
 	}
 	if now < n.lastMs {
-		return id, ErrClockBackward
+		return 0, ErrClockBackward
 	}
 
 	n.lastMs = now
 
-	var id_i64 int64
-	id_i64 |= (now & n.c.maxTimestamp) << n.c.shiftTimestamp
-	id_i64 |= n.node << n.c.shiftNode
-	id_i64 |= n.seq
-	return ID(id_i64), nil
+	var idI64 int64
+	idI64 |= (now & n.c.maxTimestamp) << n.c.shiftTimestamp
+	idI64 |= n.node << n.c.shiftNode
+	idI64 |= n.seq
+	return ID(idI64), nil
 }
 
 func (n *Node) Parse(id ID) ParsedID {

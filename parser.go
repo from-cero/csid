@@ -23,10 +23,10 @@ func (p *Parser) Parse(id ID) ParsedID {
 }
 
 func parseWith(id ID, epoch time.Time, c compiled) ParsedID {
-	id_i64 := int64(id)
-	ts := (id_i64 >> c.shiftTimestamp) & c.maxTimestamp
-	node := (id_i64 >> c.shiftNode) & c.maxNode
-	seq := id_i64 & c.maxSeq
+	idI64 := int64(id)
+	ts := (idI64 >> c.shiftTimestamp) & c.maxTimestamp
+	node := (idI64 >> c.shiftNode) & c.maxNode
+	seq := idI64 & c.maxSeq
 
 	return ParsedID{
 		Timestamp: epoch.Add(time.Duration(ts) * time.Millisecond),
