@@ -51,7 +51,7 @@ func (n *Node) Generate() (ID, error) {
 	var id ID
 
 	if now < n.lastMs { // clock backward issue
-		if n.lastMs-now > n.cfg.Drift.Milliseconds() {
+		if n.lastMs-now > n.cfg.MaxDrift.Milliseconds() {
 			return id, ErrClockBackward
 		}
 		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)

@@ -6,21 +6,22 @@ import (
 )
 
 type Config struct {
-	Format Format
-	Epoch  time.Time
-	Drift  time.Duration
+	Format   Format
+	Epoch    time.Time
+	MaxDrift time.Duration
 }
 
 type Option func(*Config)
 
-func WithEpoch(e time.Time) Option { return func(c *Config) { c.Epoch = e } }
-func WithFormat(f Format) Option   { return func(c *Config) { c.Format = f } }
+func WithFormat(f Format) Option          { return func(c *Config) { c.Format = f } }
+func WithEpoch(e time.Time) Option        { return func(c *Config) { c.Epoch = e } }
+func WithMaxDrift(d time.Duration) Option { return func(c *Config) { c.MaxDrift = d } }
 
 func applyOptions(opts []Option) Config {
 	cfg := Config{
-		Format: DefaultFormat,
-		Epoch:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		Drift:  10 * time.Millisecond,
+		Format:   DefaultFormat,
+		Epoch:    time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		MaxDrift: 10 * time.Millisecond,
 	}
 	for _, o := range opts {
 		o(&cfg)
