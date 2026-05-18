@@ -8,6 +8,8 @@ import (
 	"github.com/from-cero/cero-id/registry"
 )
 
+// Node is a distributed ID generator bound to a single node ID acquired from a Registry.
+// All methods are safe for concurrent use.
 type Node struct {
 	mu     sync.Mutex
 	closed bool
@@ -19,6 +21,8 @@ type Node struct {
 	c      compiled
 }
 
+// NewNode creates a new Node, acquiring a node ID from the provided Registry.
+// Returns an error if the format is invalid, the registry is nil, or ID acquisition fails.
 func NewNode(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error) {
 	cfg := applyOptions(opt)
 	if err := cfg.Format.validate(); err != nil {
@@ -48,6 +52,8 @@ func NewNode(ctx context.Context, r registry.Registry, opt ...Option) (*Node, er
 	}, nil
 }
 
+// Close shuts down the node and releases its node ID back to the Registry.
+// After Close, any call to Generate returns ErrClosed.
 func (n *Node) Close(ctx context.Context) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -102,6 +108,8 @@ func (n *Node) Generate() (ID, error) {
 	return ID(idI64), nil
 }
 
+// Parse decodes an ID into its timestamp, node, and sequence components
+// using the epoch and format this Node was configured with.
 func (n *Node) Parse(id ID) ParsedID {
 	return parseWith(id, n.cfg.Epoch, n.c)
 }
