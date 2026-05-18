@@ -25,3 +25,6 @@ example-basic:
 example-burst:
 	go run examples/burst/main.go
 
+loadtest:
+	go run examples/loadtest/main.go $(ARGS)
+
