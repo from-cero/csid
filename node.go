@@ -1,8 +1,11 @@
 package ceroid
 
 import (
+	"context"
 	"sync"
 	"time"
+
+	"github.com/from-cero/cero-id/registry"
 )
 
 type Node struct {
@@ -14,7 +17,7 @@ type Node struct {
 	c      compiled
 }
 
-func NewNode(opt ...Option) (*Node, error) {
+func NewNode(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error) {
 	cfg := applyOptions(opt)
 	if err := cfg.Format.validate(); err != nil {
 		return nil, err
@@ -22,8 +25,16 @@ func NewNode(opt ...Option) (*Node, error) {
 
 	c := cfg.Format.compileFormat()
 
-	nodeID := int64(0) // TODO: get from registry, env var, etc.
-	if nodeID > c.maxNode {
+	if r == nil {
+		return nil, ErrNilRegistry
+	}
+	nodeID, err := r.Acquire(ctx)
+	if err != nil {
+		_ = r.Release(ctx)
+		return nil, err
+	}
+	if nodeID < 0 || nodeID > c.maxNode {
+		_ = r.Release(ctx)
 		return nil, ErrInvalidNodeID
 	}
 
@@ -51,7 +62,7 @@ func (n *Node) Generate() (ID, error) {
 	var id ID
 
 	if now < n.lastMs { // clock backward issue
-		if n.lastMs-now > n.cfg.MaxDrift.Milliseconds() {
+		if n.lastMs-now > n.cfg.MaxClockDrift.Milliseconds() {
 			return id, ErrClockBackward
 		}
 		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
@@ -85,6 +96,8 @@ func (n *Node) Generate() (ID, error) {
 func (n *Node) Parse(id ID) ParsedID {
 	return parseWith(id, n.cfg.Epoch, n.c)
 }
+
+func (n *Node) Close() {}
 
 func (n *Node) nowMs() int64 {
 	return time.Now().UnixMilli() - n.cfg.Epoch.UnixMilli()
