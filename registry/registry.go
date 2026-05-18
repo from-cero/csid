@@ -2,10 +2,10 @@ package registry
 
 import "context"
 
-// Registry atomically assigns a unique worker ID to this node within a
-// given (datacenterID, isProd) namespace.
+// Registry manages node ID allocation. Implementations must be safe for concurrent use.
 type Registry interface {
-	// Claim acquires a worker ID in [0, 127]. The returned release function
-	// must be called when the generator shuts down.
-	Claim(ctx context.Context, datacenterID uint8, isProd bool) (workerID uint8, release func() error, err error)
+	// Acquire reserves a unique node ID for the caller and returns it.
+	Acquire(ctx context.Context) (int64, error)
+	// Release frees the node ID previously acquired by this instance.
+	Release(ctx context.Context) error
 }
