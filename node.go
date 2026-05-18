@@ -10,6 +10,7 @@ import (
 
 type Node struct {
 	mu     sync.Mutex
+	r      registry.Registry
 	node   int64
 	lastMs int64
 	seq    int64
@@ -30,19 +31,22 @@ func NewNode(ctx context.Context, r registry.Registry, opt ...Option) (*Node, er
 	}
 	nodeID, err := r.Acquire(ctx)
 	if err != nil {
-		_ = r.Release(ctx)
 		return nil, err
 	}
 	if nodeID < 0 || nodeID > c.maxNode {
-		_ = r.Release(ctx)
 		return nil, ErrInvalidNodeID
 	}
 
 	return &Node{
+		r:    r,
 		node: nodeID,
 		cfg:  cfg,
 		c:    c,
 	}, nil
+}
+
+func (n *Node) Close(ctx context.Context) error {
+	return n.r.Release(ctx)
 }
 
 // Generate generates a new ID (0 | timestamp | sequence)
@@ -96,8 +100,6 @@ func (n *Node) Generate() (ID, error) {
 func (n *Node) Parse(id ID) ParsedID {
 	return parseWith(id, n.cfg.Epoch, n.c)
 }
-
-func (n *Node) Close() {}
 
 func (n *Node) nowMs() int64 {
 	return time.Now().UnixMilli() - n.cfg.Epoch.UnixMilli()
