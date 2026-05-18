@@ -39,10 +39,20 @@ func (id ID) String() string {
 	return strconv.FormatInt(int64(id), 10)
 }
 
+func (id ID) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + id.String() + `"`), nil
+}
+
 type ParsedID struct {
 	Timestamp time.Time
 	Node      int64
 	Sequence  int64
+}
+
+func (p ParsedID) String() string {
+	return "{timestamp: " + p.Timestamp.String() +
+		", node: " + strconv.FormatInt(p.Node, 10) +
+		", sequence: " + strconv.FormatInt(p.Sequence, 10) + "}"
 }
 
 // Format defines the bit layout of a 63-bit Snowflake ID.

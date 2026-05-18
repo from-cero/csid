@@ -15,7 +15,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(id)
+	fmt.Printf("%s -> ", id.String())
 
 	parser, err := ceroid.NewParser()
 	if err != nil {

@@ -19,5 +19,12 @@ lint-tools:
 lint:
 	golangci-lint run ./...
 
-example:
-	go run examples/main.go
+example-basic:
+	go run examples/basic/main.go
+
+example-throughput:
+	go run examples/throughput/main.go
+
+example-burst:
+	go run examples/burst/main.go
+
