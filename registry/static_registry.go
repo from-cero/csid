@@ -2,10 +2,13 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 )
+
+var errEmptyNodeIDEnv = errors.New("NODE_ID is not set in environment variables")
 
 type StaticRegistry struct {
 	nodeID int64
@@ -14,7 +17,7 @@ type StaticRegistry struct {
 func NewStaticRegistry() (*StaticRegistry, error) {
 	nodeIDStr := os.Getenv("NODE_ID")
 	if nodeIDStr == "" {
-		return nil, fmt.Errorf("NODE_ID is not set")
+		return nil, errEmptyNodeIDEnv
 	}
 	nodeID, err := strconv.ParseInt(nodeIDStr, 10, 64)
 	if err != nil {

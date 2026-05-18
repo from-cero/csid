@@ -1,20 +1,27 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	ceroid "github.com/from-cero/cero-id"
+	"github.com/from-cero/cero-id/registry"
 )
 
 const (
-	goroutines = 8
+	goroutines = 80
 	perWorker  = 100_000
 )
 
 func main() {
-	node, err := ceroid.NewNode()
+	ctx := context.Background()
+	r, err := registry.NewStaticRegistry()
+	if err != nil {
+		panic(err)
+	}
+	node, err := ceroid.NewNode(ctx, r)
 	if err != nil {
 		panic(err)
 	}
@@ -54,6 +61,8 @@ func main() {
 
 	fmt.Printf("generated : %d IDs\n", total)
 	fmt.Printf("duration  : %s\n", elapsed)
-	fmt.Printf("throughput: %.0f IDs/sec\n", float64(total)/elapsed.Seconds())
+	fmt.Printf("throughput: %.0f IDs/s, %.0f IDs/ms\n",
+		float64(total)/elapsed.Seconds(),
+		float64(total)/float64(elapsed.Milliseconds()))
 	fmt.Printf("duplicates: none\n")
 }
