@@ -3,8 +3,8 @@ package ceroid
 import "errors"
 
 var (
-	// ErrFormatTooManyBits is returned when TimestampBits + NodeBits + SequenceBits + ... != 63.
-	ErrFormatTooManyBits = errors.New("format bits must sum to 63")
+	// ErrInvalidFormatBits is returned when TimestampBits + NodeBits + SequenceBits + ... != 63.
+	ErrInvalidFormatBits = errors.New("format bits must sum to 63")
 
 	// ErrInvalidNodeID is returned when the acquired node id exceeds the maximum allowed by the format.
 	ErrInvalidNodeID = errors.New("node id is out of range for the given format")

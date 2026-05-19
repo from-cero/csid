@@ -17,7 +17,7 @@ var DefaultFormat = Format{
 func (f Format) validate() error {
 	sum := int(f.TimestampBits) + int(f.NodeBits) + int(f.SequenceBits)
 	if sum != 63 {
-		return ErrFormatTooManyBits
+		return ErrInvalidFormatBits
 	}
 	return nil
 }
