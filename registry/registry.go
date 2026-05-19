@@ -6,6 +6,7 @@ import "context"
 type Registry interface {
 	// Acquire reserves a unique node ID for the caller and returns it.
 	Acquire(ctx context.Context) (int64, error)
+
 	// Release frees the node ID previously acquired by this instance.
 	Release(ctx context.Context) error
 }
