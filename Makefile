@@ -19,9 +19,14 @@ lint-tools:
 lint:
 	golangci-lint run ./...
 
-example-basic:
-	go run examples/basic/main.go
+run-basic:
+	cd examples/basic && go run .
 
-example-burst:
-	go run examples/burst/main.go
+run-burst:
+	cd examples/burst && go run .
 
+run-vs-uuidv7:
+	cd examples/vs_uuidv7 && go run .
+
+run-vs-uuidv7-mixed:
+	cd examples/vs_uuidv7_mixed && go run .
