@@ -20,7 +20,10 @@ lint:
 	golangci-lint run ./...
 
 run-basic:
-	go run examples/basic/main.go $(ARGS)
+	cd examples/basic && go run .
 
 run-burst:
-	go run examples/burst/main.go
+	cd examples/burst && go run .
+
+run-vs-uuidv7:
+	cd examples/vs_uuidv7 && go run .
