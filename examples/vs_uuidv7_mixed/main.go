@@ -20,8 +20,7 @@ const (
 	totalIDs = nodes * perNode
 )
 
-// fixedRegistry is a Registry that returns a hard-coded node ID.
-// It simulates one pod/process that has been assigned a stable node ID at deploy time.
+// fixedRegistry returns a hard-coded node ID, simulating a pod with a stable assigned ID.
 type fixedRegistry struct{ id int64 }
 
 func (r *fixedRegistry) Acquire(_ context.Context) (int64, error) { return r.id, nil }
@@ -29,6 +28,7 @@ func (r *fixedRegistry) Release(_ context.Context) error          { return nil }
 
 var _ registry.Registry = (*fixedRegistry)(nil)
 
+// runCeroIDMultinode creates one independent Node per goroutine — the intended deployment model.
 func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	ids := make([]ceroid.ID, totalIDs)
 	latencies := make([][]int64, nodes)
@@ -37,8 +37,6 @@ func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	}
 
 	ctx := context.Background()
-
-	// Each node simulates an independent pod with its own generator — no shared mutex.
 	nodeGenerators := make([]*ceroid.Node, nodes)
 	for i := range nodes {
 		n, err := ceroid.New(ctx, &fixedRegistry{id: int64(i)})
@@ -93,7 +91,9 @@ func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	return elapsed, hist, false
 }
 
-func runUUIDv7Multinode() (time.Duration, *hdrhistogram.Histogram, bool) {
+// runUUIDv7Singlenode runs all goroutines through the shared global uuid generator —
+// the typical usage when uuid.NewV7() is called directly without per-goroutine isolation.
+func runUUIDv7Singlenode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	ids := make([]uuid.UUID, totalIDs)
 	latencies := make([][]int64, nodes)
 	for i := range nodes {
@@ -114,7 +114,7 @@ func runUUIDv7Multinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 				id, err := uuid.NewV7()
 				lat[j] = time.Since(t0).Nanoseconds()
 				if err != nil {
-					log.Fatalf("uuidv7 node %d failed: %v", nodeIdx, err)
+					log.Fatalf("uuidv7 goroutine %d failed: %v", nodeIdx, err)
 				}
 				ids[offset+j] = id
 			}
@@ -160,17 +160,17 @@ func printResult(elapsed time.Duration, hist *hdrhistogram.Histogram, dups bool)
 }
 
 func main() {
-	fmt.Printf("benchmark: %d nodes × %d IDs = %d total\n", nodes, perNode, totalIDs)
-	fmt.Printf("model: each node is an independent generator (simulates separate pods)\n\n")
+	fmt.Printf("benchmark: %d goroutines × %d IDs = %d total\n", nodes, perNode, totalIDs)
+	fmt.Printf("model: cero-id = one node per goroutine  |  UUIDv7 = shared global generator\n\n")
 
-	fmt.Println("--- cero-id (multinode) ---")
+	fmt.Println("--- cero-id (multi on one process) ---")
 	ceroElapsed, ceroHist, ceroDups := runCeroIDMultinode()
 	printResult(ceroElapsed, ceroHist, ceroDups)
 
 	fmt.Println()
 
-	fmt.Println("--- UUIDv7 (multinode) ---")
-	uuidElapsed, uuidHist, uuidDups := runUUIDv7Multinode()
+	fmt.Println("--- UUIDv7 (single on one process) ---")
+	uuidElapsed, uuidHist, uuidDups := runUUIDv7Singlenode()
 	printResult(uuidElapsed, uuidHist, uuidDups)
 
 	fmt.Println()

@@ -1,4 +1,4 @@
-module github.com/from-cero/cero-id/examples/vs_uuidv7_multinode
+module github.com/from-cero/cero-id/examples/vs_uuidv7_mixed
 
 go 1.25.5
 

@@ -28,5 +28,5 @@ run-burst:
 run-vs-uuidv7:
 	cd examples/vs_uuidv7 && go run .
 
-run-vs-uuidv7-multinode:
-	cd examples/vs_uuidv7_multinode && go run .
+run-vs-uuidv7-mixed:
+	cd examples/vs_uuidv7_mixed && go run .
