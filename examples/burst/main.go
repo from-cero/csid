@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -11,19 +14,27 @@ import (
 )
 
 const (
-	goroutines = 80
+	goroutines = 8
 	perWorker  = 100_000
 )
 
 func main() {
+	nodeID := flag.Int64("node", 0, "static node ID to use")
+	flag.Parse()
+
+	err := os.Setenv("NODE_ID", fmt.Sprintf("%d", *nodeID))
+	if err != nil {
+		log.Fatalf("failed to set NODE_ID environment variable: %v", err)
+	}
+
 	ctx := context.Background()
 	r, err := registry.NewStaticRegistry()
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to create registry: %v", err)
 	}
 	node, err := ceroid.New(ctx, r)
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to create node: %v", err)
 	}
 
 	total := goroutines * perWorker
@@ -40,7 +51,8 @@ func main() {
 			for j := range perWorker {
 				id, err := node.Generate()
 				if err != nil {
-					panic(err)
+					fmt.Printf("worker %d failed to generate ID: %v", workerIdx, err)
+					return
 				}
 				ids[offset+j] = id
 			}
