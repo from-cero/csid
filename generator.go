@@ -108,12 +108,6 @@ func (n *Node) Generate() (ID, error) {
 	return ID(idI64), nil
 }
 
-// Parse decodes an ID into its timestamp, node, and sequence components
-// using the epoch and format this Node was configured with.
-func (n *Node) Parse(id ID) ParsedID {
-	return parseWith(id, n.cfg.Epoch, n.c)
-}
-
 func (n *Node) nowMs() int64 {
 	return time.Now().UnixMilli() - n.cfg.Epoch.UnixMilli()
 }
