@@ -71,7 +71,7 @@ func main() {
 			defer outerWg.Done()
 
 			r := &fixedRegistry{nodeID: int64(nodeIdx)}
-			node, err := ceroid.NewNode(ctx, r)
+			node, err := ceroid.New(ctx, r)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "node %d: NewNode failed: %v\n", nodeIdx, err)
 				os.Exit(1)

@@ -15,7 +15,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	node, err := ceroid.NewNode(ctx, r)
+	node, err := ceroid.New(ctx, r)
 	if err != nil {
 		panic(err)
 	}

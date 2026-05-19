@@ -21,9 +21,9 @@ type Node struct {
 	c      compiled
 }
 
-// NewNode creates a new Node, acquiring a node ID from the provided Registry.
+// New creates a new Node, acquiring a node ID from the provided Registry.
 // Returns an error if the format is invalid, the registry is nil, or ID acquisition fails.
-func NewNode(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error) {
+func New(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error) {
 	cfg := applyOptions(opt)
 	if err := cfg.Format.validate(); err != nil {
 		return nil, err
