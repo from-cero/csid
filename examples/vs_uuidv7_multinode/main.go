@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -16,48 +15,55 @@ import (
 )
 
 const (
-	goroutines = 8
-	perWorker  = 100_000
+	nodes    = 8
+	perNode  = 100_000
+	totalIDs = nodes * perNode
 )
 
-func runCeroID() (time.Duration, *hdrhistogram.Histogram, bool) {
-	err := os.Setenv("NODE_ID", "0")
-	if err != nil {
-		log.Fatalf("failed to set NODE_ID: %v", err)
+// fixedRegistry is a Registry that returns a hard-coded node ID.
+// It simulates one pod/process that has been assigned a stable node ID at deploy time.
+type fixedRegistry struct{ id int64 }
+
+func (r *fixedRegistry) Acquire(_ context.Context) (int64, error) { return r.id, nil }
+func (r *fixedRegistry) Release(_ context.Context) error          { return nil }
+
+var _ registry.Registry = (*fixedRegistry)(nil)
+
+func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
+	ids := make([]ceroid.ID, totalIDs)
+	latencies := make([][]int64, nodes)
+	for i := range nodes {
+		latencies[i] = make([]int64, perNode)
 	}
 
 	ctx := context.Background()
-	r, err := registry.NewStaticRegistry()
-	if err != nil {
-		log.Fatalf("failed to create registry: %v", err)
-	}
-	node, err := ceroid.New(ctx, r)
-	if err != nil {
-		log.Fatalf("failed to create node: %v", err)
-	}
 
-	total := goroutines * perWorker
-	ids := make([]ceroid.ID, total)
-	latencies := make([][]int64, goroutines)
-	for i := range goroutines {
-		latencies[i] = make([]int64, perWorker)
+	// Each node simulates an independent pod with its own generator — no shared mutex.
+	nodeGenerators := make([]*ceroid.Node, nodes)
+	for i := range nodes {
+		n, err := ceroid.New(ctx, &fixedRegistry{id: int64(i)})
+		if err != nil {
+			log.Fatalf("failed to create cero-id node %d: %v", i, err)
+		}
+		nodeGenerators[i] = n
 	}
 
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	for i := range goroutines {
+	for i := range nodes {
 		wg.Add(1)
-		go func(workerIdx int) {
+		go func(nodeIdx int) {
 			defer wg.Done()
-			offset := workerIdx * perWorker
-			lat := latencies[workerIdx]
-			for j := range perWorker {
+			offset := nodeIdx * perNode
+			lat := latencies[nodeIdx]
+			gen := nodeGenerators[nodeIdx]
+			for j := range perNode {
 				t0 := time.Now()
-				id, genErr := node.Generate()
+				id, err := gen.Generate()
 				lat[j] = time.Since(t0).Nanoseconds()
-				if genErr != nil {
-					log.Fatalf("cero-id worker %d failed: %v", workerIdx, genErr)
+				if err != nil {
+					log.Fatalf("cero-id node %d failed: %v", nodeIdx, err)
 				}
 				ids[offset+j] = id
 			}
@@ -77,7 +83,7 @@ func runCeroID() (time.Duration, *hdrhistogram.Histogram, bool) {
 		}
 	}
 
-	seen := make(map[ceroid.ID]struct{}, total)
+	seen := make(map[ceroid.ID]struct{}, totalIDs)
 	for _, id := range ids {
 		if _, dup := seen[id]; dup {
 			return elapsed, hist, true
@@ -87,29 +93,28 @@ func runCeroID() (time.Duration, *hdrhistogram.Histogram, bool) {
 	return elapsed, hist, false
 }
 
-func runUUIDv7() (time.Duration, *hdrhistogram.Histogram, bool) {
-	total := goroutines * perWorker
-	ids := make([]uuid.UUID, total)
-	latencies := make([][]int64, goroutines)
-	for i := range goroutines {
-		latencies[i] = make([]int64, perWorker)
+func runUUIDv7Multinode() (time.Duration, *hdrhistogram.Histogram, bool) {
+	ids := make([]uuid.UUID, totalIDs)
+	latencies := make([][]int64, nodes)
+	for i := range nodes {
+		latencies[i] = make([]int64, perNode)
 	}
 
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	for i := range goroutines {
+	for i := range nodes {
 		wg.Add(1)
-		go func(workerIdx int) {
+		go func(nodeIdx int) {
 			defer wg.Done()
-			offset := workerIdx * perWorker
-			lat := latencies[workerIdx]
-			for j := range perWorker {
+			offset := nodeIdx * perNode
+			lat := latencies[nodeIdx]
+			for j := range perNode {
 				t0 := time.Now()
-				id, genErr := uuid.NewV7()
+				id, err := uuid.NewV7()
 				lat[j] = time.Since(t0).Nanoseconds()
-				if genErr != nil {
-					log.Fatalf("uuidv7 worker %d failed: %v", workerIdx, genErr)
+				if err != nil {
+					log.Fatalf("uuidv7 node %d failed: %v", nodeIdx, err)
 				}
 				ids[offset+j] = id
 			}
@@ -129,7 +134,7 @@ func runUUIDv7() (time.Duration, *hdrhistogram.Histogram, bool) {
 		}
 	}
 
-	seen := make(map[uuid.UUID]struct{}, total)
+	seen := make(map[uuid.UUID]struct{}, totalIDs)
 	for _, id := range ids {
 		if _, dup := seen[id]; dup {
 			return elapsed, hist, true
@@ -139,42 +144,40 @@ func runUUIDv7() (time.Duration, *hdrhistogram.Histogram, bool) {
 	return elapsed, hist, false
 }
 
-func printResult(name string, elapsed time.Duration, hist *hdrhistogram.Histogram, dups bool) {
-	total := goroutines * perWorker
+func printResult(elapsed time.Duration, hist *hdrhistogram.Histogram, dups bool) {
 	dupStr := "none"
 	if dups {
 		dupStr = "YES (collision detected!)"
 	}
-	fmt.Printf("  generated  : %d IDs\n", total)
+	fmt.Printf("  generated  : %d IDs\n", totalIDs)
 	fmt.Printf("  duration   : %s\n", elapsed)
 	fmt.Printf("  throughput : %.0f IDs/s  |  %.0f IDs/ms\n",
-		float64(total)/elapsed.Seconds(),
-		float64(total)/float64(elapsed.Milliseconds()))
+		float64(totalIDs)/elapsed.Seconds(),
+		float64(totalIDs)/float64(elapsed.Milliseconds()))
 	fmt.Printf("  latency p50: %d ns\n", hist.ValueAtQuantile(50))
 	fmt.Printf("  latency p99: %d ns\n", hist.ValueAtQuantile(99))
 	fmt.Printf("  duplicates : %s\n", dupStr)
-	_ = name
 }
 
 func main() {
-	total := goroutines * perWorker
-	fmt.Printf("benchmark: %d goroutines × %d IDs = %d total\n\n", goroutines, perWorker, total)
+	fmt.Printf("benchmark: %d nodes × %d IDs = %d total\n", nodes, perNode, totalIDs)
+	fmt.Printf("model: each node is an independent generator (simulates separate pods)\n\n")
 
-	fmt.Println("--- cero-id ---")
-	ceroElapsed, ceroHist, ceroDups := runCeroID()
-	printResult("cero-id", ceroElapsed, ceroHist, ceroDups)
+	fmt.Println("--- cero-id (multinode) ---")
+	ceroElapsed, ceroHist, ceroDups := runCeroIDMultinode()
+	printResult(ceroElapsed, ceroHist, ceroDups)
 
 	fmt.Println()
 
-	fmt.Println("--- UUIDv7 ---")
-	uuidElapsed, uuidHist, uuidDups := runUUIDv7()
-	printResult("UUIDv7", uuidElapsed, uuidHist, uuidDups)
+	fmt.Println("--- UUIDv7 (multinode) ---")
+	uuidElapsed, uuidHist, uuidDups := runUUIDv7Multinode()
+	printResult(uuidElapsed, uuidHist, uuidDups)
 
 	fmt.Println()
 	fmt.Println("--- comparison ---")
 
-	throughputCero := float64(total) / ceroElapsed.Seconds()
-	throughputUUID := float64(total) / uuidElapsed.Seconds()
+	throughputCero := float64(totalIDs) / ceroElapsed.Seconds()
+	throughputUUID := float64(totalIDs) / uuidElapsed.Seconds()
 
 	if ceroElapsed < uuidElapsed {
 		fmt.Printf("  throughput : cero-id is %.2fx faster (%.0f vs %.0f IDs/s)\n",

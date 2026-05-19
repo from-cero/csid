@@ -98,6 +98,6 @@ func main() {
 		float64(total)/elapsed.Seconds(),
 		float64(total)/float64(elapsed.Milliseconds()))
 	fmt.Printf("duplicates: none\n")
-	fmt.Printf("latency avg: %.1f ns\n", hist.Mean())
+	fmt.Printf("latency p50: %d ns\n", hist.ValueAtQuantile(50))
 	fmt.Printf("latency p99: %d ns\n", hist.ValueAtQuantile(99))
 }
