@@ -160,7 +160,7 @@ func printResult(name string, elapsed time.Duration, hist *hdrhistogram.Histogra
 
 func main() {
 	total := goroutines * perWorker
-	fmt.Printf("benchmark: %d goroutines × %d IDs = %d total\n\n", goroutines, perWorker, total)
+	fmt.Printf("benchmark: %d goroutines x %d IDs = %d total\n\n", goroutines, perWorker, total)
 
 	fmt.Println("--- csid ---")
 	ceroElapsed, ceroHist, ceroDups := runCSID()
