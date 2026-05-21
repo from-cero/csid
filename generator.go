@@ -85,6 +85,12 @@ func (n *Node) Generate() (ID, error) {
 	}
 
 	now := n.nowMs() // milliseconds since epoch
+	if now < 0 {
+		return 0, ErrBeforeEpoch
+	}
+	if now > n.c.maxTimestamp {
+		return 0, ErrTimestampOverflow
+	}
 
 	if now < n.lastMs { // clock backward issue
 		if n.lastMs-now > n.cfg.MaxClockDrift.Milliseconds() {
@@ -92,12 +98,15 @@ func (n *Node) Generate() (ID, error) {
 		}
 		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
 		now = n.nowMs()
-		// check whether now still be behind n.lastMs
-		if now < n.lastMs {
-			return 0, ErrClockBackward
-		}
 	}
 
+	if now < 0 {
+		return 0, ErrBeforeEpoch
+	}
+	// check whether now still be behind n.lastMs
+	if now < n.lastMs {
+		return 0, ErrClockSyncFailed
+	}
 	if now == n.lastMs {
 		n.seq = (n.seq + 1) & n.c.maxSeq
 		// sequence exhausted for this ms
@@ -114,11 +123,10 @@ func (n *Node) Generate() (ID, error) {
 	} else {
 		n.seq = 0
 	}
-	n.lastMs = now
-
 	if now > n.c.maxTimestamp {
 		return 0, ErrTimestampOverflow
 	}
+	n.lastMs = now
 
 	var idI64 int64
 	idI64 |= (now & n.c.maxTimestamp) << n.c.shiftTimestamp

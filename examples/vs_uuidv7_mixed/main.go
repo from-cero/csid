@@ -162,7 +162,7 @@ func printResult(elapsed time.Duration, hist *hdrhistogram.Histogram, dups bool)
 }
 
 func main() {
-	fmt.Printf("benchmark: %d goroutines × %d IDs = %d total\n", nodes, perNode, totalIDs)
+	fmt.Printf("benchmark: %d goroutines x %d IDs = %d total\n", nodes, perNode, totalIDs)
 	fmt.Printf("model: csid = one node per goroutine  |  UUIDv7 = shared global generator\n\n")
 
 	fmt.Println("--- csid (multi on one process) ---")
