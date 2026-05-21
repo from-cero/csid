@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/from-cero/cero-id/registry"
 	"github.com/google/uuid"
 
 	"github.com/from-cero/csid"
+	"github.com/from-cero/csid/registry"
 )
 
 const (
@@ -28,8 +28,8 @@ func (r *fixedRegistry) Release(_ context.Context) error          { return nil }
 
 var _ registry.Registry = (*fixedRegistry)(nil)
 
-// runCeroIDMultinode creates one independent Node per goroutine — the intended deployment model.
-func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
+// runCSIDMultinode creates one independent Node per goroutine — the intended deployment model.
+func runCSIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	ids := make([]csid.ID, totalIDs)
 	latencies := make([][]int64, nodes)
 	for i := range nodes {
@@ -41,7 +41,7 @@ func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	for i := range nodes {
 		n, err := csid.New(ctx, &fixedRegistry{id: int64(i)})
 		if err != nil {
-			log.Fatalf("failed to create cero-id node %d: %v", i, err)
+			log.Fatalf("failed to create csid node %d: %v", i, err)
 		}
 		nodeGenerators[i] = n
 	}
@@ -61,7 +61,7 @@ func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 				id, err := gen.Generate()
 				lat[j] = time.Since(t0).Nanoseconds()
 				if err != nil {
-					log.Fatalf("cero-id node %d failed: %v", nodeIdx, err)
+					log.Fatalf("csid node %d failed: %v", nodeIdx, err)
 				}
 				ids[offset+j] = id
 			}
@@ -163,10 +163,10 @@ func printResult(elapsed time.Duration, hist *hdrhistogram.Histogram, dups bool)
 
 func main() {
 	fmt.Printf("benchmark: %d goroutines × %d IDs = %d total\n", nodes, perNode, totalIDs)
-	fmt.Printf("model: cero-id = one node per goroutine  |  UUIDv7 = shared global generator\n\n")
+	fmt.Printf("model: csid = one node per goroutine  |  UUIDv7 = shared global generator\n\n")
 
-	fmt.Println("--- cero-id (multi on one process) ---")
-	ceroElapsed, ceroHist, ceroDups := runCeroIDMultinode()
+	fmt.Println("--- csid (multi on one process) ---")
+	ceroElapsed, ceroHist, ceroDups := runCSIDMultinode()
 	printResult(ceroElapsed, ceroHist, ceroDups)
 
 	fmt.Println()
@@ -183,16 +183,16 @@ func main() {
 
 	if ceroElapsed < uuidElapsed {
 		fmt.Printf(
-			"  throughput : cero-id is %.2fx faster (%.0f vs %.0f IDs/s)\n",
+			"  throughput : csid is %.2fx faster (%.0f vs %.0f IDs/s)\n",
 			throughputCero/throughputUUID, throughputCero, throughputUUID,
 		)
 		fmt.Printf(
-			"  latency p50: cero-id is %.2fx lower (%d vs %d ns)\n",
+			"  latency p50: csid is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(50))/float64(ceroHist.ValueAtQuantile(50)),
 			ceroHist.ValueAtQuantile(50), uuidHist.ValueAtQuantile(50),
 		)
 		fmt.Printf(
-			"  latency p99: cero-id is %.2fx lower (%d vs %d ns)\n",
+			"  latency p99: csid is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(99))/float64(ceroHist.ValueAtQuantile(99)),
 			ceroHist.ValueAtQuantile(99), uuidHist.ValueAtQuantile(99),
 		)

@@ -1,4 +1,4 @@
-module github.com/from-cero/cero-id/examples/vs_uuidv7_mixed
+module github.com/from-cero/csid/examples/vs_uuidv7_mixed
 
 go 1.25.5
 

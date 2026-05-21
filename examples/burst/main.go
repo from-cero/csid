@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/from-cero/cero-id/registry"
 
 	"github.com/from-cero/csid"
+	"github.com/from-cero/csid/registry"
 )
 
 const (

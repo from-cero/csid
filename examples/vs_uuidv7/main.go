@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/from-cero/cero-id/registry"
 	"github.com/google/uuid"
 
 	"github.com/from-cero/csid"
+	"github.com/from-cero/csid/registry"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	perWorker  = 100_000
 )
 
-func runCeroID() (time.Duration, *hdrhistogram.Histogram, bool) {
+func runCSID() (time.Duration, *hdrhistogram.Histogram, bool) {
 	err := os.Setenv("NODE_ID", "0")
 	if err != nil {
 		log.Fatalf("failed to set NODE_ID: %v", err)
@@ -57,7 +57,7 @@ func runCeroID() (time.Duration, *hdrhistogram.Histogram, bool) {
 				id, genErr := node.Generate()
 				lat[j] = time.Since(t0).Nanoseconds()
 				if genErr != nil {
-					log.Fatalf("cero-id worker %d failed: %v", workerIdx, genErr)
+					log.Fatalf("csid worker %d failed: %v", workerIdx, genErr)
 				}
 				ids[offset+j] = id
 			}
@@ -162,9 +162,9 @@ func main() {
 	total := goroutines * perWorker
 	fmt.Printf("benchmark: %d goroutines × %d IDs = %d total\n\n", goroutines, perWorker, total)
 
-	fmt.Println("--- cero-id ---")
-	ceroElapsed, ceroHist, ceroDups := runCeroID()
-	printResult("cero-id", ceroElapsed, ceroHist, ceroDups)
+	fmt.Println("--- csid ---")
+	ceroElapsed, ceroHist, ceroDups := runCSID()
+	printResult("csid", ceroElapsed, ceroHist, ceroDups)
 
 	fmt.Println()
 
@@ -180,16 +180,16 @@ func main() {
 
 	if ceroElapsed < uuidElapsed {
 		fmt.Printf(
-			"  throughput : cero-id is %.2fx faster (%.0f vs %.0f IDs/s)\n",
+			"  throughput : csid is %.2fx faster (%.0f vs %.0f IDs/s)\n",
 			throughputCero/throughputUUID, throughputCero, throughputUUID,
 		)
 		fmt.Printf(
-			"  latency p50: cero-id is %.2fx lower (%d vs %d ns)\n",
+			"  latency p50: csid is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(50))/float64(ceroHist.ValueAtQuantile(50)),
 			ceroHist.ValueAtQuantile(50), uuidHist.ValueAtQuantile(50),
 		)
 		fmt.Printf(
-			"  latency p99: cero-id is %.2fx lower (%d vs %d ns)\n",
+			"  latency p99: csid is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(99))/float64(ceroHist.ValueAtQuantile(99)),
 			ceroHist.ValueAtQuantile(99), uuidHist.ValueAtQuantile(99),
 		)
