@@ -4,7 +4,7 @@ import "time"
 
 // Config holds all configuration for a Node or Parser.
 type Config struct {
-	Format        Format        // The default is ceroid.DefaultFormat.
+	Format        Format        // The default is csid.DefaultFormat.
 	Epoch         time.Time     // The default epoch is 2026-01-01 00:00:00 UTC.
 	MaxClockDrift time.Duration // The default is 10ms.
 }

@@ -19,3 +19,17 @@ func (id ID) String() string {
 func (id ID) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + id.String() + `"`), nil
 }
+
+// UnmarshalJSON decodes the ID from a quoted decimal string.
+func (id *ID) UnmarshalJSON(data []byte) error {
+	s, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
+	}
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return err
+	}
+	*id = ID(i)
+	return nil
+}
