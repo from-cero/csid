@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	ceroid "github.com/from-cero/cero-id"
-	"github.com/from-cero/cero-id/registry"
+	"github.com/from-cero/csid"
+	"github.com/from-cero/csid/registry"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create registry: %v", err)
 	}
-	node, err := ceroid.New(ctx, r)
+	node, err := csid.New(ctx, r)
 	if err != nil {
 		log.Fatalf("failed to create node: %v", err)
 	}
@@ -43,7 +43,7 @@ func main() {
 	}
 	fmt.Printf("%s -> ", id.String())
 
-	parser, err := ceroid.NewParser()
+	parser, err := csid.NewParser()
 	if err != nil {
 		fmt.Printf("failed to create parser: %v", err)
 		return
