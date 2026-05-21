@@ -1,4 +1,4 @@
-module github.com/from-cero/cero-id/examples/burst
+module github.com/from-cero/csid/examples/burst
 
 go 1.25.5
 

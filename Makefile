@@ -7,6 +7,7 @@ format-tools:
 	go install github.com/segmentio/golines@latest
 
 format:
+	go mod tidy
 	goimports -w .
 	gci write --custom-order -s standard -s default -s "prefix($(MODULE))" -s blank \
 		--no-lex-order --skip-generated --skip-vendor .
