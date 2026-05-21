@@ -1,4 +1,4 @@
-package ceroid
+package csid
 
 import (
 	"strconv"

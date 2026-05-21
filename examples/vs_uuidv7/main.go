@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
+	"github.com/HdrHistogram/hdrhistogram-go"
+	"github.com/from-cero/cero-id/registry"
 	"github.com/google/uuid"
 
-	ceroid "github.com/from-cero/cero-id"
-	"github.com/from-cero/cero-id/registry"
+	"github.com/from-cero/csid"
 )
 
 const (
@@ -31,13 +31,13 @@ func runCeroID() (time.Duration, *hdrhistogram.Histogram, bool) {
 	if err != nil {
 		log.Fatalf("failed to create registry: %v", err)
 	}
-	node, err := ceroid.New(ctx, r)
+	node, err := csid.New(ctx, r)
 	if err != nil {
 		log.Fatalf("failed to create node: %v", err)
 	}
 
 	total := goroutines * perWorker
-	ids := make([]ceroid.ID, total)
+	ids := make([]csid.ID, total)
 	latencies := make([][]int64, goroutines)
 	for i := range goroutines {
 		latencies[i] = make([]int64, perWorker)
@@ -77,7 +77,7 @@ func runCeroID() (time.Duration, *hdrhistogram.Histogram, bool) {
 		}
 	}
 
-	seen := make(map[ceroid.ID]struct{}, total)
+	seen := make(map[csid.ID]struct{}, total)
 	for _, id := range ids {
 		if _, dup := seen[id]; dup {
 			return elapsed, hist, true
@@ -147,9 +147,11 @@ func printResult(name string, elapsed time.Duration, hist *hdrhistogram.Histogra
 	}
 	fmt.Printf("  generated  : %d IDs\n", total)
 	fmt.Printf("  duration   : %s\n", elapsed)
-	fmt.Printf("  throughput : %.0f IDs/s  |  %.0f IDs/ms\n",
+	fmt.Printf(
+		"  throughput : %.0f IDs/s  |  %.0f IDs/ms\n",
 		float64(total)/elapsed.Seconds(),
-		float64(total)/float64(elapsed.Milliseconds()))
+		float64(total)/float64(elapsed.Milliseconds()),
+	)
 	fmt.Printf("  latency p50: %d ns\n", hist.ValueAtQuantile(50))
 	fmt.Printf("  latency p99: %d ns\n", hist.ValueAtQuantile(99))
 	fmt.Printf("  duplicates : %s\n", dupStr)
@@ -177,22 +179,34 @@ func main() {
 	throughputUUID := float64(total) / uuidElapsed.Seconds()
 
 	if ceroElapsed < uuidElapsed {
-		fmt.Printf("  throughput : cero-id is %.2fx faster (%.0f vs %.0f IDs/s)\n",
-			throughputCero/throughputUUID, throughputCero, throughputUUID)
-		fmt.Printf("  latency p50: cero-id is %.2fx lower (%d vs %d ns)\n",
+		fmt.Printf(
+			"  throughput : cero-id is %.2fx faster (%.0f vs %.0f IDs/s)\n",
+			throughputCero/throughputUUID, throughputCero, throughputUUID,
+		)
+		fmt.Printf(
+			"  latency p50: cero-id is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(50))/float64(ceroHist.ValueAtQuantile(50)),
-			ceroHist.ValueAtQuantile(50), uuidHist.ValueAtQuantile(50))
-		fmt.Printf("  latency p99: cero-id is %.2fx lower (%d vs %d ns)\n",
+			ceroHist.ValueAtQuantile(50), uuidHist.ValueAtQuantile(50),
+		)
+		fmt.Printf(
+			"  latency p99: cero-id is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(99))/float64(ceroHist.ValueAtQuantile(99)),
-			ceroHist.ValueAtQuantile(99), uuidHist.ValueAtQuantile(99))
+			ceroHist.ValueAtQuantile(99), uuidHist.ValueAtQuantile(99),
+		)
 	} else {
-		fmt.Printf("  throughput : UUIDv7 is %.2fx faster (%.0f vs %.0f IDs/s)\n",
-			throughputUUID/throughputCero, throughputUUID, throughputCero)
-		fmt.Printf("  latency p50: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
+		fmt.Printf(
+			"  throughput : UUIDv7 is %.2fx faster (%.0f vs %.0f IDs/s)\n",
+			throughputUUID/throughputCero, throughputUUID, throughputCero,
+		)
+		fmt.Printf(
+			"  latency p50: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
 			float64(ceroHist.ValueAtQuantile(50))/float64(uuidHist.ValueAtQuantile(50)),
-			uuidHist.ValueAtQuantile(50), ceroHist.ValueAtQuantile(50))
-		fmt.Printf("  latency p99: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
+			uuidHist.ValueAtQuantile(50), ceroHist.ValueAtQuantile(50),
+		)
+		fmt.Printf(
+			"  latency p99: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
 			float64(ceroHist.ValueAtQuantile(99))/float64(uuidHist.ValueAtQuantile(99)),
-			uuidHist.ValueAtQuantile(99), ceroHist.ValueAtQuantile(99))
+			uuidHist.ValueAtQuantile(99), ceroHist.ValueAtQuantile(99),
+		)
 	}
 }

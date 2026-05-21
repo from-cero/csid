@@ -1,6 +1,7 @@
-package ceroid
+package csid
 
-// Format defines the bit layout of a 63-bit Snowflake ID. [timestamp | node | sequence]
+// Format defines the bit layout of a 63-bit Snowflake ID.
+// [timestamp | node | sequence]
 type Format struct {
 	TimestampBits uint8
 	NodeBits      uint8
