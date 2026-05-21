@@ -15,10 +15,13 @@ format:
 	gofumpt -l -w -extra .
 
 lint-tools:
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.12.1
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $$(go env GOPATH)/bin v2.12.1
 
 lint:
 	golangci-lint run ./...
+
+test:
+	go test -v --cover ./...
 
 eg-basic:
 	cd examples/basic && go run .
