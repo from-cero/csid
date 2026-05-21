@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
+	"github.com/HdrHistogram/hdrhistogram-go"
+	"github.com/from-cero/cero-id/registry"
 	"github.com/google/uuid"
 
-	ceroid "github.com/from-cero/cero-id"
-	"github.com/from-cero/cero-id/registry"
+	"github.com/from-cero/csid"
 )
 
 const (
@@ -30,16 +30,16 @@ var _ registry.Registry = (*fixedRegistry)(nil)
 
 // runCeroIDMultinode creates one independent Node per goroutine — the intended deployment model.
 func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
-	ids := make([]ceroid.ID, totalIDs)
+	ids := make([]csid.ID, totalIDs)
 	latencies := make([][]int64, nodes)
 	for i := range nodes {
 		latencies[i] = make([]int64, perNode)
 	}
 
 	ctx := context.Background()
-	nodeGenerators := make([]*ceroid.Node, nodes)
+	nodeGenerators := make([]*csid.Node, nodes)
 	for i := range nodes {
-		n, err := ceroid.New(ctx, &fixedRegistry{id: int64(i)})
+		n, err := csid.New(ctx, &fixedRegistry{id: int64(i)})
 		if err != nil {
 			log.Fatalf("failed to create cero-id node %d: %v", i, err)
 		}
@@ -81,7 +81,7 @@ func runCeroIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 		}
 	}
 
-	seen := make(map[ceroid.ID]struct{}, totalIDs)
+	seen := make(map[csid.ID]struct{}, totalIDs)
 	for _, id := range ids {
 		if _, dup := seen[id]; dup {
 			return elapsed, hist, true
@@ -151,9 +151,11 @@ func printResult(elapsed time.Duration, hist *hdrhistogram.Histogram, dups bool)
 	}
 	fmt.Printf("  generated  : %d IDs\n", totalIDs)
 	fmt.Printf("  duration   : %s\n", elapsed)
-	fmt.Printf("  throughput : %.0f IDs/s  |  %.0f IDs/ms\n",
+	fmt.Printf(
+		"  throughput : %.0f IDs/s  |  %.0f IDs/ms\n",
 		float64(totalIDs)/elapsed.Seconds(),
-		float64(totalIDs)/float64(elapsed.Milliseconds()))
+		float64(totalIDs)/float64(elapsed.Milliseconds()),
+	)
 	fmt.Printf("  latency p50: %d ns\n", hist.ValueAtQuantile(50))
 	fmt.Printf("  latency p99: %d ns\n", hist.ValueAtQuantile(99))
 	fmt.Printf("  duplicates : %s\n", dupStr)
@@ -180,22 +182,34 @@ func main() {
 	throughputUUID := float64(totalIDs) / uuidElapsed.Seconds()
 
 	if ceroElapsed < uuidElapsed {
-		fmt.Printf("  throughput : cero-id is %.2fx faster (%.0f vs %.0f IDs/s)\n",
-			throughputCero/throughputUUID, throughputCero, throughputUUID)
-		fmt.Printf("  latency p50: cero-id is %.2fx lower (%d vs %d ns)\n",
+		fmt.Printf(
+			"  throughput : cero-id is %.2fx faster (%.0f vs %.0f IDs/s)\n",
+			throughputCero/throughputUUID, throughputCero, throughputUUID,
+		)
+		fmt.Printf(
+			"  latency p50: cero-id is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(50))/float64(ceroHist.ValueAtQuantile(50)),
-			ceroHist.ValueAtQuantile(50), uuidHist.ValueAtQuantile(50))
-		fmt.Printf("  latency p99: cero-id is %.2fx lower (%d vs %d ns)\n",
+			ceroHist.ValueAtQuantile(50), uuidHist.ValueAtQuantile(50),
+		)
+		fmt.Printf(
+			"  latency p99: cero-id is %.2fx lower (%d vs %d ns)\n",
 			float64(uuidHist.ValueAtQuantile(99))/float64(ceroHist.ValueAtQuantile(99)),
-			ceroHist.ValueAtQuantile(99), uuidHist.ValueAtQuantile(99))
+			ceroHist.ValueAtQuantile(99), uuidHist.ValueAtQuantile(99),
+		)
 	} else {
-		fmt.Printf("  throughput : UUIDv7 is %.2fx faster (%.0f vs %.0f IDs/s)\n",
-			throughputUUID/throughputCero, throughputUUID, throughputCero)
-		fmt.Printf("  latency p50: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
+		fmt.Printf(
+			"  throughput : UUIDv7 is %.2fx faster (%.0f vs %.0f IDs/s)\n",
+			throughputUUID/throughputCero, throughputUUID, throughputCero,
+		)
+		fmt.Printf(
+			"  latency p50: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
 			float64(ceroHist.ValueAtQuantile(50))/float64(uuidHist.ValueAtQuantile(50)),
-			uuidHist.ValueAtQuantile(50), ceroHist.ValueAtQuantile(50))
-		fmt.Printf("  latency p99: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
+			uuidHist.ValueAtQuantile(50), ceroHist.ValueAtQuantile(50),
+		)
+		fmt.Printf(
+			"  latency p99: UUIDv7 is %.2fx lower (%d vs %d ns)\n",
 			float64(ceroHist.ValueAtQuantile(99))/float64(uuidHist.ValueAtQuantile(99)),
-			uuidHist.ValueAtQuantile(99), ceroHist.ValueAtQuantile(99))
+			uuidHist.ValueAtQuantile(99), ceroHist.ValueAtQuantile(99),
+		)
 	}
 }

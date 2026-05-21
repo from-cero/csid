@@ -1,3 +1,3 @@
-module github.com/from-cero/cero-id
+module github.com/from-cero/csid
 
 go 1.25.5

@@ -1,14 +1,14 @@
-package ceroid
+package csid
 
 import (
 	"context"
 	"sync"
 	"time"
 
-	"github.com/from-cero/cero-id/registry"
+	"github.com/from-cero/csid/registry"
 )
 
-// Node is a distributed ID generator bound to a single node ID acquired from a Registry.
+// Node is a distributed ID generator bound to a single node ID acquired from a registry.Registry.
 // All methods are safe for concurrent use.
 type Node struct {
 	mu     sync.Mutex
@@ -21,8 +21,7 @@ type Node struct {
 	c      compiled
 }
 
-// New creates a new Node, acquiring a node ID from the provided Registry.
-// Returns an error if the format is invalid, the registry is nil, or ID acquisition fails.
+// New creates a new Node, acquiring a node ID from the provided registry.Registry.
 func New(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error) {
 	cfg := applyOptions(opt)
 	if err := cfg.Format.validate(); err != nil {
@@ -52,7 +51,7 @@ func New(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error)
 	}, nil
 }
 
-// Close shuts down the node and releases its node ID back to the Registry.
+// Close shuts down the node and releases its node ID back to the registry.Registry.
 // After Close, any call to Generate returns ErrClosed.
 func (n *Node) Close(ctx context.Context) error {
 	n.mu.Lock()
@@ -61,15 +60,19 @@ func (n *Node) Close(ctx context.Context) error {
 	return n.r.Release(ctx)
 }
 
-// Generate generates a new ID (0 | timestamp | sequence)
+// Generate generates a new ID [timestamp | nodeID | sequence]
 //
 // Clock backward behavior:
-//   - If the current time is less than the last generated time, it means that the clock has moved backwards.
-//   - If the clock has moved backwards by more than the threshold, an error is returned. (infrastructure issue, clock sync issue, etc.)
-//   - If the clock has moved backwards by less than the threshold, the generator will wait until the clock catches up to the last generated time before generating a new ID.
+//   - If the current time is less than the last generated time,
+//     it means that the clock has moved backwards.
+//   - If the clock has moved backwards by more than the threshold,
+//     an error is returned. (infrastructure issue, clock sync issue, etc.)
+//   - If the clock has moved backwards by less than the threshold,
+//     the generator will wait until the clock catches up to the last generated time before generating a new ID.
 //
 // Sequence exhaustion behavior:
-//   - If the sequence number exceeds the maximum for the current millisecond, the generator will wait until the next millisecond before generating a new ID.
+//   - If the sequence number exceeds the maximum for the current millisecond,
+//     the generator will wait until the next millisecond before generating a new ID.
 func (n *Node) Generate() (ID, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()

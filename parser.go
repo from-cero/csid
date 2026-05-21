@@ -1,16 +1,14 @@
-package ceroid
+package csid
 
 import "time"
 
 // Parser decodes IDs without requiring a running Node.
-// Use it in read-path services that only need to inspect IDs, not generate them.
 type Parser struct {
 	cfg Config
 	c   compiled
 }
 
 // NewParser creates a Parser configured with the given options.
-// Returns an error if the format is invalid.
 func NewParser(opt ...Option) (*Parser, error) {
 	cfg := applyOptions(opt)
 	if err := cfg.Format.validate(); err != nil {
