@@ -22,4 +22,8 @@ var (
 	// ErrClosed is returned when
 	// Node.Generate is called on a closed Node.
 	ErrClosed = errors.New("node is closed")
+
+	// ErrTimestampOverflow is returned when
+	// the current time exceeds the maximum representable timestamp for the given format.
+	ErrTimestampOverflow = errors.New("timestamp exceeds maximum for the given format")
 )

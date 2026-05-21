@@ -28,7 +28,7 @@ func (r *fixedRegistry) Release(_ context.Context) error          { return nil }
 
 var _ registry.Registry = (*fixedRegistry)(nil)
 
-// runCSIDMultinode creates one independent Node per goroutine — the intended deployment model.
+// runCSIDMultinode creates one independent Node per goroutine - the intended deployment model.
 func runCSIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	ids := make([]csid.ID, totalIDs)
 	latencies := make([][]int64, nodes)
@@ -91,7 +91,7 @@ func runCSIDMultinode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	return elapsed, hist, false
 }
 
-// runUUIDv7Singlenode runs all goroutines through the shared global uuid generator —
+// runUUIDv7Singlenode runs all goroutines through the shared global uuid generator -
 // the typical usage when uuid.NewV7() is called directly without per-goroutine isolation.
 func runUUIDv7Singlenode() (time.Duration, *hdrhistogram.Histogram, bool) {
 	ids := make([]uuid.UUID, totalIDs)
