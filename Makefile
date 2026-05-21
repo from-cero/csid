@@ -1,4 +1,4 @@
-MODULE = github.com/from-cero/cero-id
+MODULE = github.com/from-cero/csid
 
 format-tools:
 	go install mvdan.cc/gofumpt@latest
@@ -19,14 +19,14 @@ lint-tools:
 lint:
 	golangci-lint run ./...
 
-run-basic:
+eg-basic:
 	cd examples/basic && go run .
 
-run-burst:
+eg-burst:
 	cd examples/burst && go run .
 
-run-vs-uuidv7:
+eg-vs-uuidv7:
 	cd examples/vs_uuidv7 && go run .
 
-run-vs-uuidv7-mixed:
+eg-vs-uuidv7-mixed:
 	cd examples/vs_uuidv7_mixed && go run .

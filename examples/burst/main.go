@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
-
-	ceroid "github.com/from-cero/cero-id"
+	"github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/from-cero/cero-id/registry"
+
+	"github.com/from-cero/csid"
 )
 
 const (
@@ -34,13 +34,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create registry: %v", err)
 	}
-	node, err := ceroid.New(ctx, r)
+	node, err := csid.New(ctx, r)
 	if err != nil {
 		log.Fatalf("failed to create node: %v", err)
 	}
 
 	total := goroutines * perWorker
-	ids := make([]ceroid.ID, total)
+	ids := make([]csid.ID, total)
 	// per-goroutine latency slices to avoid shared-state overhead during generation
 	latencies := make([][]int64, goroutines)
 	for i := range goroutines {
@@ -72,7 +72,7 @@ func main() {
 	wg.Wait()
 	elapsed := time.Since(start)
 
-	seen := make(map[ceroid.ID]struct{}, total)
+	seen := make(map[csid.ID]struct{}, total)
 	for _, id := range ids {
 		if _, dup := seen[id]; dup {
 			fmt.Printf("DUPLICATE: %d\n", id)
@@ -94,9 +94,11 @@ func main() {
 
 	fmt.Printf("generated : %d IDs\n", total)
 	fmt.Printf("duration  : %s\n", elapsed)
-	fmt.Printf("throughput: %.0f IDs/s, %.0f IDs/ms\n",
+	fmt.Printf(
+		"throughput: %.0f IDs/s, %.0f IDs/ms\n",
 		float64(total)/elapsed.Seconds(),
-		float64(total)/float64(elapsed.Milliseconds()))
+		float64(total)/float64(elapsed.Milliseconds()),
+	)
 	fmt.Printf("duplicates: none\n")
 	fmt.Printf("latency p50: %d ns\n", hist.ValueAtQuantile(50))
 	fmt.Printf("latency p99: %d ns\n", hist.ValueAtQuantile(99))
