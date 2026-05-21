@@ -101,7 +101,7 @@ func printResult(label string, elapsed time.Duration, hist *hdrhistogram.Histogr
 
 func main() {
 	total := goroutines * perWorker
-	fmt.Printf("benchmark: %d goroutines × %d IDs = %d total\n\n", goroutines, perWorker, total)
+	fmt.Printf("benchmark: %d goroutines x %d IDs = %d total\n\n", goroutines, perWorker, total)
 
 	sleepElapsed, sleepHist, sleepDups := run(false)
 	printResult("sleep (default)", sleepElapsed, sleepHist, sleepDups)
