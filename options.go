@@ -7,6 +7,7 @@ type Config struct {
 	Format        Format        // The default is csid.DefaultFormat.
 	Epoch         time.Time     // The default epoch is 2026-01-01 00:00:00 UTC.
 	MaxClockDrift time.Duration // The default is 10ms.
+	BusySpin      bool          // Default is false. If true, spin on sequence exhaustion instead of sleeping.
 }
 
 type Option func(*Config) // Option is a functional option for configuring.
@@ -19,6 +20,12 @@ func WithEpoch(e time.Time) Option { return func(c *Config) { c.Epoch = e } }
 
 // WithMaxClockDrift sets the maximum tolerated backward clock drift before.
 func WithMaxClockDrift(d time.Duration) Option { return func(c *Config) { c.MaxClockDrift = d } }
+
+// WithBusySpin enables CPU spinning instead of sleeping when the sequence is exhausted.
+// This allows the node to reach its theoretical maximum throughput (~1024 IDs/ms with the default
+// format) at the cost of burning a CPU core during exhaustion. Use only when squeezing maximum
+// throughput from a single node; otherwise prefer multiple nodes.
+func WithBusySpin(v bool) Option { return func(c *Config) { c.BusySpin = v } }
 
 func applyOptions(opts []Option) Config {
 	cfg := Config{

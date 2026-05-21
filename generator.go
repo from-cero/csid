@@ -2,6 +2,7 @@ package csid
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"time"
 
@@ -73,6 +74,8 @@ func (n *Node) Close(ctx context.Context) error {
 // Sequence exhaustion behavior:
 //   - If the sequence number exceeds the maximum for the current millisecond,
 //     the generator will wait until the next millisecond before generating a new ID.
+//   - If BusySpin is enabled, the generator spins (runtime.Gosched) instead of sleeping,
+//     allowing it to approach the theoretical maximum throughput at the cost of CPU.
 func (n *Node) Generate() (ID, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -88,14 +91,23 @@ func (n *Node) Generate() (ID, error) {
 			return 0, ErrClockBackward
 		}
 		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
-		now = n.lastMs
+		now = n.nowMs()
+		// check whether now still be behind n.lastMs
+		if now < n.lastMs {
+			return 0, ErrClockBackward
+		}
 	}
 
 	if now == n.lastMs {
 		n.seq = (n.seq + 1) & n.c.maxSeq
-		if n.seq == 0 { // sequence exhausted for this ms
+		// sequence exhausted for this ms
+		if n.seq == 0 {
 			for now <= n.lastMs {
-				time.Sleep(time.Millisecond)
+				if n.cfg.BusySpin {
+					runtime.Gosched()
+				} else {
+					time.Sleep(time.Millisecond)
+				}
 				now = n.nowMs()
 			}
 		}
@@ -103,6 +115,10 @@ func (n *Node) Generate() (ID, error) {
 		n.seq = 0
 	}
 	n.lastMs = now
+
+	if now > n.c.maxTimestamp {
+		return 0, ErrTimestampOverflow
+	}
 
 	var idI64 int64
 	idI64 |= (now & n.c.maxTimestamp) << n.c.shiftTimestamp

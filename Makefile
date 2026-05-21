@@ -26,8 +26,12 @@ eg-basic:
 eg-burst:
 	cd examples/burst && go run .
 
+eg-burst-busy-spin:
+	cd examples/burst_with_busy_spin && go run .
+
 eg-vs-uuidv7:
 	cd examples/vs_uuidv7 && go run .
 
 eg-vs-uuidv7-mixed:
 	cd examples/vs_uuidv7_mixed && go run .
+
