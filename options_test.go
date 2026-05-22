@@ -18,8 +18,8 @@ func TestApplyOptions_Defaults(t *testing.T) {
 	if cfg.MaxClockDrift != 10*time.Millisecond {
 		t.Errorf("MaxClockDrift = %v, want 10ms", cfg.MaxClockDrift)
 	}
-	if cfg.BusySpin {
-		t.Error("BusySpin = true, want false")
+	if cfg.YieldOnExhaustion {
+		t.Error("YieldOnExhaustion = true, want false")
 	}
 }
 
@@ -46,10 +46,10 @@ func TestWithMaxClockDrift(t *testing.T) {
 	}
 }
 
-func TestWithBusySpin(t *testing.T) {
-	cfg := applyOptions([]Option{WithBusySpin(true)})
-	if !cfg.BusySpin {
-		t.Error("BusySpin = false, want true")
+func TestWithYieldOnExhaustion(t *testing.T) {
+	cfg := applyOptions([]Option{WithYieldOnExhaustion(true)})
+	if !cfg.YieldOnExhaustion {
+		t.Error("YieldOnExhaustion = false, want true")
 	}
 }
 
@@ -58,7 +58,7 @@ func TestApplyOptions_MultipleOptions(t *testing.T) {
 	cfg := applyOptions([]Option{
 		WithEpoch(e),
 		WithMaxClockDrift(5 * time.Millisecond),
-		WithBusySpin(true),
+		WithYieldOnExhaustion(true),
 	})
 	if !cfg.Epoch.Equal(e) {
 		t.Errorf("Epoch = %v, want %v", cfg.Epoch, e)
@@ -66,7 +66,7 @@ func TestApplyOptions_MultipleOptions(t *testing.T) {
 	if cfg.MaxClockDrift != 5*time.Millisecond {
 		t.Errorf("MaxClockDrift = %v, want 5ms", cfg.MaxClockDrift)
 	}
-	if !cfg.BusySpin {
-		t.Error("BusySpin = false, want true")
+	if !cfg.YieldOnExhaustion {
+		t.Error("YieldOnExhaustion = false, want true")
 	}
 }

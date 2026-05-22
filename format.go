@@ -29,6 +29,7 @@ type compiled struct {
 	maxTimestamp   int64
 	maxNode        int64
 	maxSeq         int64
+	epochMs        int64
 }
 
 func (f Format) compileFormat() compiled {

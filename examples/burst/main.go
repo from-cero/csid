@@ -5,72 +5,84 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 	"time"
 
-	"github.com/HdrHistogram/hdrhistogram-go"
+	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
 
 	"github.com/from-cero/csid"
-	"github.com/from-cero/csid/registry"
-)
-
-const (
-	goroutines = 8
-	perWorker  = 100_000
 )
 
 func main() {
-	nodeID := flag.Int64("node", 0, "static node ID to use")
+	nodes := flag.Int("nodes", 1, "number of nodes to simulate")
+	goroutinesPerNode := flag.Int("goroutines-per-node", 1, "goroutines per node")
+	targetPerNode := flag.Int("target-per-node", 100_000, "target IDs to generate per node")
+	yieldOnExhaustion := flag.Bool("yield-on-exhaustion", false, "yield instead of sleep when sequence is exhausted")
 	flag.Parse()
 
-	err := os.Setenv("NODE_ID", fmt.Sprintf("%d", *nodeID))
-	if err != nil {
-		log.Fatalf("failed to set NODE_ID environment variable: %v", err)
+	if *targetPerNode%*goroutinesPerNode != 0 {
+		log.Fatalf(
+			"target-per-node (%d) must be divisible by goroutines-per-node (%d)",
+			*targetPerNode,
+			*goroutinesPerNode,
+		)
 	}
+	perWorker := *targetPerNode / *goroutinesPerNode
+
+	fmt.Printf("nodes: %d, goroutines-per-node: %d, target-per-node: %d, yield-on-exhaustion: %v\n",
+		*nodes, *goroutinesPerNode, *targetPerNode, *yieldOnExhaustion)
+	fmt.Printf("target: %d\n\n", *nodes**targetPerNode)
 
 	ctx := context.Background()
-	r, err := registry.NewStaticRegistry()
-	if err != nil {
-		log.Fatalf("failed to create registry: %v", err)
-	}
-	node, err := csid.New(ctx, r)
-	if err != nil {
-		log.Fatalf("failed to create node: %v", err)
+
+	totalWorkers := *nodes * *goroutinesPerNode
+	total := totalWorkers * perWorker
+	ids := make([]csid.ID, total)
+	latencies := make([][]int64, totalWorkers)
+	for i := range totalWorkers {
+		latencies[i] = make([]int64, perWorker)
 	}
 
-	total := goroutines * perWorker
-	ids := make([]csid.ID, total)
-	// per-goroutine latency slices to avoid shared-state overhead during generation
-	latencies := make([][]int64, goroutines)
-	for i := range goroutines {
-		latencies[i] = make([]int64, perWorker)
+	nodeList := make([]*csid.Node, *nodes)
+	for n := range *nodes {
+		node, err := csid.New(ctx, &fixedRegistry{id: int64(n)}, csid.WithYieldOnExhaustion(*yieldOnExhaustion))
+		if err != nil {
+			log.Fatalf("failed to create node %d: %v", n, err)
+		}
+		nodeList[n] = node
 	}
 
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	for i := range goroutines {
-		wg.Add(1)
-		go func(workerIdx int) {
-			defer wg.Done()
-			offset := workerIdx * perWorker
-			lat := latencies[workerIdx]
-			for j := range perWorker {
-				t0 := time.Now()
-				id, genErr := node.Generate()
-				lat[j] = time.Since(t0).Nanoseconds()
-				if genErr != nil {
-					fmt.Printf("worker %d failed to generate ID: %v", workerIdx, genErr)
-					return
+	for n := range *nodes {
+		for g := range *goroutinesPerNode {
+			workerIdx := n**goroutinesPerNode + g
+			wg.Add(1)
+			go func(workerIdx int, node *csid.Node) {
+				defer wg.Done()
+				offset := workerIdx * perWorker
+				lat := latencies[workerIdx]
+				for j := range perWorker {
+					t0 := time.Now()
+					id, genErr := node.Generate()
+					lat[j] = time.Since(t0).Nanoseconds()
+					if genErr != nil {
+						fmt.Printf("worker %d failed to generate ID: %v", workerIdx, genErr)
+						return
+					}
+					ids[offset+j] = id
 				}
-				ids[offset+j] = id
-			}
-		}(i)
+			}(workerIdx, nodeList[n])
+		}
 	}
 
 	wg.Wait()
 	elapsed := time.Since(start)
+
+	for _, node := range nodeList {
+		node.Close(ctx)
+	}
 
 	seen := make(map[csid.ID]struct{}, total)
 	for _, id := range ids {
@@ -81,7 +93,6 @@ func main() {
 		seen[id] = struct{}{}
 	}
 
-	// 1 ns to 10 s range, 3 significant figures
 	hist := hdrhistogram.New(1, 10_000_000_000, 3)
 	for _, workerLat := range latencies {
 		for _, ns := range workerLat {
@@ -92,14 +103,22 @@ func main() {
 		}
 	}
 
+	theoreticalMaxPerMs := int64(*nodes) * (int64(1) << csid.DefaultFormat.SequenceBits)
+
 	fmt.Printf("generated : %d IDs\n", total)
 	fmt.Printf("duration  : %s\n", elapsed)
 	fmt.Printf(
-		"throughput: %.0f IDs/s, %.0f IDs/ms\n",
+		"throughput: %.0f IDs/s, %.0f IDs/ms (max %d IDs/ms)\n",
 		float64(total)/elapsed.Seconds(),
 		float64(total)/float64(elapsed.Milliseconds()),
+		theoreticalMaxPerMs,
 	)
 	fmt.Printf("duplicates: none\n")
 	fmt.Printf("latency p50: %d ns\n", hist.ValueAtQuantile(50))
 	fmt.Printf("latency p99: %d ns\n", hist.ValueAtQuantile(99))
 }
+
+type fixedRegistry struct{ id int64 }
+
+func (r *fixedRegistry) Acquire(_ context.Context) (int64, error) { return r.id, nil }
+func (r *fixedRegistry) Release(_ context.Context) error          { return nil }
