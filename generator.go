@@ -23,6 +23,8 @@ type Node struct {
 }
 
 // New creates a new Node, acquiring a node ID from the provided registry.Registry.
+// Restart safety: seq resets to 0 on each New, but a collision requires a full restart within 1ms of
+// the previous run. Go runtime init alone takes >1ms, making this impossible in practice.
 func New(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error) {
 	cfg := applyOptions(opt)
 	if err := cfg.Format.validate(); err != nil {
@@ -30,6 +32,7 @@ func New(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error)
 	}
 
 	c := cfg.Format.compileFormat()
+	c.epochMs = cfg.Epoch.UnixMilli()
 
 	if r == nil {
 		return nil, ErrNilRegistry
@@ -74,7 +77,7 @@ func (n *Node) Close(ctx context.Context) error {
 // Sequence exhaustion behavior:
 //   - If the sequence number exceeds the maximum for the current millisecond,
 //     the generator will wait until the next millisecond before generating a new ID.
-//   - If BusySpin is enabled, the generator spins (runtime.Gosched) instead of sleeping,
+//   - If YieldOnExhaustion is enabled, the generator yields (runtime.Gosched) instead of sleeping,
 //     allowing it to approach the theoretical maximum throughput at the cost of CPU.
 func (n *Node) Generate() (ID, error) {
 	n.mu.Lock()
@@ -112,7 +115,7 @@ func (n *Node) Generate() (ID, error) {
 		// sequence exhausted for this ms
 		if n.seq == 0 {
 			for now <= n.lastMs {
-				if n.cfg.BusySpin {
+				if n.cfg.YieldOnExhaustion {
 					runtime.Gosched()
 				} else {
 					time.Sleep(time.Millisecond)
@@ -136,5 +139,5 @@ func (n *Node) Generate() (ID, error) {
 }
 
 func (n *Node) nowMs() int64 {
-	return time.Now().UnixMilli() - n.cfg.Epoch.UnixMilli()
+	return time.Now().UnixMilli() - n.c.epochMs
 }
