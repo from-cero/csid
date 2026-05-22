@@ -57,7 +57,10 @@ func runCSID(nodeCount, targetPerNode int, yieldOnExhaustion bool) (time.Duratio
 	elapsed := time.Since(start)
 
 	for _, n := range nodes {
-		n.Close(ctx)
+		err := n.Close(ctx)
+		if err != nil {
+			log.Printf("failed to close csid node: %v", err)
+		}
 	}
 
 	hist := hdrhistogram.New(1, 10_000_000_000, 3)
