@@ -8,4 +8,4 @@ require (
 	github.com/google/uuid v1.6.0
 )
 
-replace github.com/from-cero/csid => ../..
+replace github.com/from-cero/csid => ../../..
