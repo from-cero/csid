@@ -12,18 +12,20 @@ func TestFormat_validate(t *testing.T) {
 	}{
 		{"default layout", Format{41, 12, 10}, nil},
 		{"custom valid", Format{40, 13, 10}, nil},
-		{"sum too low", Format{10, 10, 10}, ErrInvalidFormatBits},
-		{"sum too high", Format{41, 12, 11}, ErrInvalidFormatBits},
-		{"all zeros", Format{0, 0, 0}, ErrInvalidFormatBits},
+		{"sum too low", Format{10, 10, 10}, ErrInvalidBitFormat},
+		{"sum too high", Format{41, 12, 11}, ErrInvalidBitFormat},
+		{"all zeros", Format{0, 0, 0}, ErrInvalidBitFormat},
 		{"single field", Format{63, 0, 0}, nil},
 	}
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			err := tc.f.validate()
-			if err != tc.wantErr {
-				t.Errorf("validate() = %v, want %v", err, tc.wantErr)
-			}
-		})
+		t.Run(
+			tc.name, func(t *testing.T) {
+				err := tc.f.validate()
+				if err != tc.wantErr {
+					t.Errorf("validate() = %v, want %v", err, tc.wantErr)
+				}
+			},
+		)
 	}
 }
 
