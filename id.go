@@ -2,7 +2,8 @@ package csid
 
 import "strconv"
 
-type ID int64 // ID is a 63-bit Snowflake-style distributed identifier.
+// ID is a 63-bit Snowflake-style distributed identifier.
+type ID int64
 
 // Int64 returns the ID as a plain int64.
 func (id ID) Int64() int64 {
@@ -17,7 +18,11 @@ func (id ID) String() string {
 // MarshalJSON encodes the ID as a quoted decimal string to avoid precision loss in JavaScript,
 // which cannot represent 63-bit integers exactly.
 func (id ID) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + id.String() + `"`), nil
+	b := make([]byte, 0, 22)
+	b = append(b, '"')
+	b = strconv.AppendInt(b, int64(id), 10)
+	b = append(b, '"')
+	return b, nil
 }
 
 // UnmarshalJSON decodes the ID from a quoted decimal string.

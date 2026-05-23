@@ -35,14 +35,14 @@ func New(ctx context.Context, reg registry.Registry, opt ...Option) (*Node, erro
 	epochMs := cfg.Epoch.UnixMilli()
 
 	if reg == nil {
-		return nil, ErrNilRegistry
+		return nil, ConfigErrNilRegistry
 	}
 	nodeID, err := reg.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if nodeID < 0 || nodeID > comF.maxNode {
-		return nil, ErrInvalidNodeID
+		return nil, ConfigErrInvalidNodeID
 	}
 
 	return &Node{
@@ -58,7 +58,7 @@ func New(ctx context.Context, reg registry.Registry, opt ...Option) (*Node, erro
 }
 
 // Close shuts down the node and releases its node ID back to the registry.Registry.
-// After Close, any call to Generate returns ErrClosed.
+// After Close, any call to Generate returns ErrNodeClosed.
 func (n *Node) Close(ctx context.Context) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -85,8 +85,9 @@ func (n *Node) Generate() (ID, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	// if node is closed, any on-flight generate calls should stop
 	if n.closed {
-		return 0, ErrClosed
+		return 0, ErrNodeClosed
 	}
 
 	now := n.nowMs() // milliseconds since epoch
@@ -113,9 +114,8 @@ func (n *Node) Generate() (ID, error) {
 		return 0, ErrClockSyncFailed
 	}
 	if now == n.lastMs {
-		n.seq = (n.seq + 1) & n.comF.maxSeq
-		// sequence exhausted for this ms
-		if n.seq == 0 {
+		n.seq = (n.seq + 1) & n.comF.maxSeq // increase sequence and wrap around if exceeds max
+		if n.seq == 0 {                     // sequence exhausted (wrapped around) for this ms
 			for now <= n.lastMs {
 				if n.cfg.YieldOnExhaustion {
 					runtime.Gosched()
