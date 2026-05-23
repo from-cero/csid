@@ -3,17 +3,17 @@ package csid
 import "errors"
 
 var (
-	// ConfigErrInvalidBitFormat is returned when
+	// ErrInvalidBitFormat is returned when
 	// Format.TimestampBits + Format.NodeBits + Format.SequenceBits + ... != 63.
-	ConfigErrInvalidBitFormat = errors.New("bit format must sum to 63")
+	ErrInvalidBitFormat = errors.New("bit format must sum to 63")
 
-	// ConfigErrNilRegistry is returned when
+	// ErrNilRegistry is returned when
 	// New is called with a nil Registry.
-	ConfigErrNilRegistry = errors.New("registry cannot be nil")
+	ErrNilRegistry = errors.New("registry cannot be nil")
 
-	// ConfigErrInvalidNodeID is returned when
+	// ErrInvalidNodeID is returned when
 	// the node ID acquired is out of range for the given Format.NodeBits.
-	ConfigErrInvalidNodeID = errors.New("node id is out of range for the given format")
+	ErrInvalidNodeID = errors.New("node id is out of range for the given format")
 
 	// ErrNodeClosed is returned when
 	// Node.Generate is called on a closed Node.

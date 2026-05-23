@@ -34,16 +34,16 @@ func newTestNode(t *testing.T, r *mockRegistry, opts ...Option) *Node {
 
 func TestNew_NilRegistry(t *testing.T) {
 	_, err := New(context.Background(), nil)
-	if !errors.Is(err, ConfigErrNilRegistry) {
-		t.Errorf("New(nil) = %v, want ConfigErrNilRegistry", err)
+	if !errors.Is(err, ErrNilRegistry) {
+		t.Errorf("New(nil) = %v, want ErrNilRegistry", err)
 	}
 }
 
 func TestNew_InvalidFormat(t *testing.T) {
 	r := &mockRegistry{nodeID: 0}
 	_, err := New(context.Background(), r, WithFormat(Format{1, 1, 1}))
-	if !errors.Is(err, ConfigErrInvalidBitFormat) {
-		t.Errorf("New(bad format) = %v, want ConfigErrInvalidBitFormat", err)
+	if !errors.Is(err, ErrInvalidBitFormat) {
+		t.Errorf("New(bad format) = %v, want ErrInvalidBitFormat", err)
 	}
 }
 
@@ -60,8 +60,8 @@ func TestNew_NodeIDOutOfRange(t *testing.T) {
 	// Default format: maxNode = (1<<12)-1 = 4095
 	r := &mockRegistry{nodeID: 4096}
 	_, err := New(context.Background(), r)
-	if !errors.Is(err, ConfigErrInvalidNodeID) {
-		t.Errorf("New(nodeID=4096) = %v, want ConfigErrInvalidNodeID", err)
+	if !errors.Is(err, ErrInvalidNodeID) {
+		t.Errorf("New(nodeID=4096) = %v, want ErrInvalidNodeID", err)
 	}
 }
 
