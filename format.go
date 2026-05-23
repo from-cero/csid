@@ -2,9 +2,9 @@ package csid
 
 // Format defines the bit layout of a 63-bit Snowflake ID. [timestamp | node | sequence]
 type Format struct {
-	TimestampBits uint8
-	NodeBits      uint8
-	SequenceBits  uint8
+	TimestampBits uint8 // number of bits allocated for the timestamp (in ms since epoch)
+	NodeBits      uint8 // number of bits allocated for the node id
+	SequenceBits  uint8 // number of bits allocated for the sequence number
 }
 
 // DefaultFormat is the default 63-bit layout: 41-bit timestamp, 12-bit node, 10-bit sequence.
@@ -17,7 +17,7 @@ var DefaultFormat = Format{
 func (f Format) validate() error {
 	sum := int(f.TimestampBits) + int(f.NodeBits) + int(f.SequenceBits)
 	if sum != 63 {
-		return ErrInvalidBitFormat
+		return ConfigErrInvalidBitFormat
 	}
 	return nil
 }

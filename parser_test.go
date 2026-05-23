@@ -9,8 +9,8 @@ import (
 
 func TestNewParser_InvalidFormat(t *testing.T) {
 	p, err := NewParser(WithFormat(Format{1, 1, 1}))
-	if !errors.Is(err, ErrInvalidBitFormat) {
-		t.Errorf("NewParser() = %v, want ErrInvalidBitFormat", err)
+	if !errors.Is(err, ConfigErrInvalidBitFormat) {
+		t.Errorf("NewParser() = %v, want ConfigErrInvalidBitFormat", err)
 	}
 	if p != nil {
 		t.Error("NewParser() returned non-nil parser on error")
