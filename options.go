@@ -7,11 +7,11 @@ type Config struct {
 	Format            Format        // Default is csid.DefaultFormat.
 	Epoch             time.Time     // Default is 2026-01-01 00:00:00 UTC.
 	MaxClockDrift     time.Duration // Default is 10ms.
-	YieldOnExhaustion bool
-	// Default is false. If true, yield (runtime.Gosched) on sequence exhaustion instead of sleeping.
+	YieldOnExhaustion bool          // Default is false. If true, yield (runtime.Gosched) on sequence exhaustion instead of sleeping.
 }
 
-type Option func(*Config) // Option is a functional option for configuring.
+// Option is a functional option for configuring.
+type Option func(*Config)
 
 // WithFormat sets the bit layout for IDs.
 func WithFormat(f Format) Option { return func(c *Config) { c.Format = f } }
