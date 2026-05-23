@@ -35,14 +35,14 @@ func New(ctx context.Context, reg registry.Registry, opt ...Option) (*Node, erro
 	epochMs := cfg.Epoch.UnixMilli()
 
 	if reg == nil {
-		return nil, ConfigErrNilRegistry
+		return nil, ErrNilRegistry
 	}
 	nodeID, err := reg.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if nodeID < 0 || nodeID > comF.maxNode {
-		return nil, ConfigErrInvalidNodeID
+		return nil, ErrInvalidNodeID
 	}
 
 	return &Node{
