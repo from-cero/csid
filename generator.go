@@ -12,46 +12,48 @@ import (
 // Node is a distributed ID generator bound to a single node ID acquired from a registry.Registry.
 // All methods are safe for concurrent use.
 type Node struct {
-	mu     sync.Mutex
-	closed bool
-	r      registry.Registry
-	node   int64
-	lastMs int64
-	seq    int64
-	cfg    Config
-	c      compiled
+	mu      sync.Mutex        // protects shared states when Node.Generate of same Node runs on multiple goroutines
+	closed  bool              // indicates whether the Node is closed
+	cfg     Config            // configuration for this Node
+	comF    compiledFormat    // precomputed values for bit manipulation based on cfg.Format
+	reg     registry.Registry // registry for acquiring and releasing nodeID ID
+	epochMs int64             // epoch in milliseconds since Unix epoch
+	nodeID  int64             // the identity acquired from registry
+	lastMs  int64             // the timestamp in milliseconds of the last generated ID
+	seq     int64             // the sequence number for IDs generated within the same millisecond
 }
 
 // New creates a new Node, acquiring a node ID from the provided registry.Registry.
 // Restart safety: seq resets to 0 on each New, but a collision requires a full restart within 1ms of
 // the previous run. Go runtime init alone takes >1ms, making this impossible in practice.
-func New(ctx context.Context, r registry.Registry, opt ...Option) (*Node, error) {
+func New(ctx context.Context, reg registry.Registry, opt ...Option) (*Node, error) {
 	cfg := applyOptions(opt)
 	if err := cfg.Format.validate(); err != nil {
 		return nil, err
 	}
+	comF := cfg.Format.compileFormat()
+	epochMs := cfg.Epoch.UnixMilli()
 
-	c := cfg.Format.compileFormat()
-	c.epochMs = cfg.Epoch.UnixMilli()
-
-	if r == nil {
+	if reg == nil {
 		return nil, ErrNilRegistry
 	}
-	nodeID, err := r.Acquire(ctx)
+	nodeID, err := reg.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if nodeID < 0 || nodeID > c.maxNode {
+	if nodeID < 0 || nodeID > comF.maxNode {
 		return nil, ErrInvalidNodeID
 	}
 
 	return &Node{
-		r:      r,
-		node:   nodeID,
-		lastMs: 0,
-		seq:    0,
-		cfg:    cfg,
-		c:      c,
+		closed:  false,
+		cfg:     cfg,
+		comF:    comF,
+		reg:     reg,
+		epochMs: epochMs,
+		nodeID:  nodeID,
+		lastMs:  0,
+		seq:     0,
 	}, nil
 }
 
@@ -61,7 +63,7 @@ func (n *Node) Close(ctx context.Context) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.closed = true
-	return n.r.Release(ctx)
+	return n.reg.Release(ctx)
 }
 
 // Generate generates a new ID [timestamp | nodeID | sequence]
@@ -89,9 +91,9 @@ func (n *Node) Generate() (ID, error) {
 
 	now := n.nowMs() // milliseconds since epoch
 	if now < 0 {
-		return 0, ErrBeforeEpoch
+		return 0, ErrClockBeforeEpoch
 	}
-	if now > n.c.maxTimestamp {
+	if now > n.comF.maxTimestamp {
 		return 0, ErrTimestampOverflow
 	}
 
@@ -104,14 +106,14 @@ func (n *Node) Generate() (ID, error) {
 	}
 
 	if now < 0 {
-		return 0, ErrBeforeEpoch
+		return 0, ErrClockBeforeEpoch
 	}
 	// check whether now still be behind n.lastMs
 	if now < n.lastMs {
 		return 0, ErrClockSyncFailed
 	}
 	if now == n.lastMs {
-		n.seq = (n.seq + 1) & n.c.maxSeq
+		n.seq = (n.seq + 1) & n.comF.maxSeq
 		// sequence exhausted for this ms
 		if n.seq == 0 {
 			for now <= n.lastMs {
@@ -126,18 +128,18 @@ func (n *Node) Generate() (ID, error) {
 	} else {
 		n.seq = 0
 	}
-	if now > n.c.maxTimestamp {
+	if now > n.comF.maxTimestamp {
 		return 0, ErrTimestampOverflow
 	}
 	n.lastMs = now
 
 	var idI64 int64
-	idI64 |= (now & n.c.maxTimestamp) << n.c.shiftTimestamp
-	idI64 |= n.node << n.c.shiftNode
+	idI64 |= (now & n.comF.maxTimestamp) << n.comF.shiftTimestamp
+	idI64 |= n.nodeID << n.comF.shiftNode
 	idI64 |= n.seq
 	return ID(idI64), nil
 }
 
 func (n *Node) nowMs() int64 {
-	return time.Now().UnixMilli() - n.c.epochMs
+	return time.Now().UnixMilli() - n.epochMs
 }

@@ -4,10 +4,11 @@ import "time"
 
 // Config holds all configuration for a Node or Parser.
 type Config struct {
-	Format            Format        // The default is csid.DefaultFormat.
-	Epoch             time.Time     // The default epoch is 2026-01-01 00:00:00 UTC.
-	MaxClockDrift     time.Duration // The default is 10ms.
-	YieldOnExhaustion bool          // Default is false. If true, yield (runtime.Gosched) on sequence exhaustion instead of sleeping.
+	Format            Format        // Default is csid.DefaultFormat.
+	Epoch             time.Time     // Default is 2026-01-01 00:00:00 UTC.
+	MaxClockDrift     time.Duration // Default is 10ms.
+	YieldOnExhaustion bool
+	// Default is false. If true, yield (runtime.Gosched) on sequence exhaustion instead of sleeping.
 }
 
 type Option func(*Config) // Option is a functional option for configuring.

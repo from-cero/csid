@@ -42,8 +42,8 @@ func TestNew_NilRegistry(t *testing.T) {
 func TestNew_InvalidFormat(t *testing.T) {
 	r := &mockRegistry{nodeID: 0}
 	_, err := New(context.Background(), r, WithFormat(Format{1, 1, 1}))
-	if !errors.Is(err, ErrInvalidFormatBits) {
-		t.Errorf("New(bad format) = %v, want ErrInvalidFormatBits", err)
+	if !errors.Is(err, ErrInvalidBitFormat) {
+		t.Errorf("New(bad format) = %v, want ErrInvalidBitFormat", err)
 	}
 }
 
@@ -115,8 +115,8 @@ func TestNode_Generate_BeforeEpoch(t *testing.T) {
 	futureEpoch := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
 	n := newTestNode(t, r, WithEpoch(futureEpoch))
 	_, err := n.Generate()
-	if !errors.Is(err, ErrBeforeEpoch) {
-		t.Errorf("Generate() = %v, want ErrBeforeEpoch", err)
+	if !errors.Is(err, ErrClockBeforeEpoch) {
+		t.Errorf("Generate() = %v, want ErrClockBeforeEpoch", err)
 	}
 }
 
@@ -224,5 +224,5 @@ func TestNode_Generate_IDComponents(t *testing.T) {
 
 // NewParserFromNode creates a Parser using the same config as an existing Node (test helper).
 func NewParserFromNode(n *Node) *Parser {
-	return &Parser{cfg: n.cfg, c: n.c}
+	return &Parser{cfg: n.cfg, comF: n.comF}
 }
