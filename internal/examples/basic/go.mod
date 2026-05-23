@@ -1,6 +1,6 @@
 module github.com/from-cero/csid/examples/basic
 
-go 1.25.5
+go 1.26
 
 require github.com/from-cero/csid v0.0.0
 
