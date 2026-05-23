@@ -4,8 +4,8 @@ import "time"
 
 // Parser decodes IDs without requiring a running Node.
 type Parser struct {
-	cfg Config
-	c   compiled
+	cfg  Config
+	comF compiledFormat
 }
 
 // NewParser creates a Parser configured with the given options.
@@ -14,23 +14,23 @@ func NewParser(opt ...Option) (*Parser, error) {
 	if err := cfg.Format.validate(); err != nil {
 		return nil, err
 	}
+	comF := cfg.Format.compileFormat()
 	return &Parser{
-		cfg: cfg,
-		c:   cfg.Format.compileFormat(),
+		cfg:  cfg,
+		comF: comF,
 	}, nil
 }
 
 // Parse decodes an ID into its timestamp, node, and sequence components.
 func (p *Parser) Parse(id ID) ParsedID {
-	return parseWith(id, p.cfg.Epoch, p.c)
+	return parseWith(id, p.cfg.Epoch, p.comF)
 }
 
-func parseWith(id ID, epoch time.Time, c compiled) ParsedID {
+func parseWith(id ID, epoch time.Time, comF compiledFormat) ParsedID {
 	idI64 := int64(id)
-	ts := (idI64 >> c.shiftTimestamp) & c.maxTimestamp
-	node := (idI64 >> c.shiftNode) & c.maxNode
-	seq := idI64 & c.maxSeq
-
+	ts := (idI64 >> comF.shiftTimestamp) & comF.maxTimestamp
+	node := (idI64 >> comF.shiftNode) & comF.maxNode
+	seq := idI64 & comF.maxSeq
 	return ParsedID{
 		Timestamp: epoch.Add(time.Duration(ts) * time.Millisecond),
 		Node:      node,

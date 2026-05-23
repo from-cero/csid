@@ -2,13 +2,9 @@ package registry
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os"
 	"strconv"
 )
-
-var errEmptyNodeIDEnv = errors.New("NODE_ID is not set in environment variables")
 
 // StaticRegistry is a Registry that returns a fixed node ID read from the NODE_ID
 // environment variable. Suitable for deployments where each instance is assigned
@@ -22,11 +18,11 @@ type StaticRegistry struct {
 func NewStaticRegistry() (*StaticRegistry, error) {
 	nodeIDStr := os.Getenv("NODE_ID")
 	if nodeIDStr == "" {
-		return nil, errEmptyNodeIDEnv
+		return nil, ErrEmptyEnvNodeID
 	}
 	nodeID, err := strconv.ParseInt(nodeIDStr, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("NODE_ID is not a valid integer: %w", err)
+		return nil, ErrInvalidEnvNodeID
 	}
 	return &StaticRegistry{nodeID: nodeID}, nil
 }

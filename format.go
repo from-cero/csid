@@ -1,7 +1,6 @@
 package csid
 
-// Format defines the bit layout of a 63-bit Snowflake ID.
-// [timestamp | node | sequence]
+// Format defines the bit layout of a 63-bit Snowflake ID. [timestamp | node | sequence]
 type Format struct {
 	TimestampBits uint8
 	NodeBits      uint8
@@ -18,27 +17,26 @@ var DefaultFormat = Format{
 func (f Format) validate() error {
 	sum := int(f.TimestampBits) + int(f.NodeBits) + int(f.SequenceBits)
 	if sum != 63 {
-		return ErrInvalidFormatBits
+		return ErrInvalidBitFormat
 	}
 	return nil
 }
 
-type compiled struct {
+type compiledFormat struct {
 	shiftTimestamp uint8
 	shiftNode      uint8
 	maxTimestamp   int64
 	maxNode        int64
 	maxSeq         int64
-	epochMs        int64
 }
 
-func (f Format) compileFormat() compiled {
+func (f Format) compileFormat() compiledFormat {
 	sn := f.SequenceBits
 	st := sn + f.NodeBits
 	mask := func(bits uint8) int64 {
 		return (int64(1) << bits) - 1
 	}
-	return compiled{
+	return compiledFormat{
 		shiftTimestamp: st,
 		shiftNode:      sn,
 		maxTimestamp:   mask(f.TimestampBits),
