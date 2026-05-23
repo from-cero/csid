@@ -1,0 +1,8 @@
+.idea/
+.vscode/
+
+.env*
+!.env.example
+
+config.*.yaml
+!config.yaml
