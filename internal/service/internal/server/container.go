@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/from-cero/csid/service/internal/grpchandler"
 	"github.com/from-cero/csid/service/internal/handler"
 	"github.com/from-cero/csid/service/internal/service"
 )
@@ -29,7 +30,8 @@ type Handlers struct {
 	metrics http.Handler
 
 	// * add your handlers here
-	genH *handler.Generator
+	genH     *handler.Generator
+	genGRPCH *grpchandler.Generator
 }
 
 func NewHandlers(metrics http.Handler, ss *Services) *Handlers {
@@ -37,6 +39,7 @@ func NewHandlers(metrics http.Handler, ss *Services) *Handlers {
 		metrics: metrics,
 
 		// * initialize or add your handlers here
-		genH: handler.NewGenerator(ss.genS),
+		genH:     handler.NewGenerator(ss.genS),
+		genGRPCH: grpchandler.NewGenerator(ss.genS),
 	}
 }

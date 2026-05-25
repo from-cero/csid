@@ -25,11 +25,11 @@ type Server struct {
 }
 
 // New creates a new Server instance with the provided configuration, handlers, and services.
-func New(cfg *config.ServerConfig, h *Handlers, s *Services) *Server {
+func New(cfg *config.ServerConfig, h *Handlers, _ *Services) *Server {
 	return &Server{
 		cfg:  cfg,
 		http: newHTTPServer(&cfg.HTTP, h),
-		grpc: newGRPCServer(&cfg.GRPC, s),
+		grpc: newGRPCServer(&cfg.GRPC, h),
 	}
 }
 
