@@ -21,5 +21,4 @@ lint:
 	golangci-lint run ./...
 
 test:
-	go test -v --cover ./...
-
+	go test -race -coverprofile=coverage.out ./... && go tool cover -html=coverage.out

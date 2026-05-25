@@ -1,6 +1,7 @@
 package csid
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestFormat_validate(t *testing.T) {
 		t.Run(
 			tc.name, func(t *testing.T) {
 				err := tc.f.validate()
-				if err != tc.wantErr {
+				if !errors.Is(err, tc.wantErr) {
 					t.Errorf("validate() = %v, want %v", err, tc.wantErr)
 				}
 			},

@@ -32,4 +32,4 @@ linters:
           sizeThreshold: 512
     goconst:
       min-len: 2
-      min-occurrences: 2
+      min-occurrences: 3
