@@ -19,7 +19,7 @@ func Logger(next http.Handler) http.Handler {
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", ww.status,
-			"latency", time.Since(start),
+			"latency", time.Since(start).String(),
 			"request_id", chimw.GetReqID(r.Context()),
 		)
 	})
