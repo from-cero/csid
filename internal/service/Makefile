@@ -11,3 +11,9 @@ dev:
 test:
 	go test -race -v --cover ./...
 
+bench:
+	./benchmark/bench.sh
+
+bench-args:
+	./benchmark/bench.sh -d $(or $(d),30s) -R $(or $(R),5000) -t $(or $(t),4) -c $(or $(c),50)
+
