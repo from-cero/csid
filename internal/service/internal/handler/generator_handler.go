@@ -27,7 +27,6 @@ func (g *Generator) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("generated", "next-id", id)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte(id)); err != nil {
