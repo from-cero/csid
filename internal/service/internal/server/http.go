@@ -25,15 +25,17 @@ func newHTTPServer(cfg *config.HTTPConfig, h *Handlers) *http.Server {
 	}
 
 	// api routes: full middleware stack
-	r.Group(func(r chi.Router) {
-		r.Use(mw.Logger)          // logs method, path, status, latency, request ID
-		r.Use(mw.CORS(&cfg.CORS)) // CORS headers + preflight
-		if cfg.RequestTimeout > 0 {
-			r.Use(chimw.Timeout(cfg.RequestTimeout))
-		}
-		// * more middlewares (e.g. auth, etc.)
-		registerAPIRoutes(r, h)
-	})
+	r.Group(
+		func(r chi.Router) {
+			r.Use(mw.Logger)          // logs method, path, status, latency, request ID
+			r.Use(mw.CORS(&cfg.CORS)) // CORS headers + preflight
+			if cfg.RequestTimeout > 0 {
+				r.Use(chimw.Timeout(cfg.RequestTimeout))
+			}
+			// * more middlewares (e.g. auth, etc.)
+			registerAPIRoutes(r, h)
+		},
+	)
 
 	return &http.Server{
 		Addr:              net.JoinHostPort("", fmt.Sprint(cfg.Port)),
@@ -46,6 +48,7 @@ func newHTTPServer(cfg *config.HTTPConfig, h *Handlers) *http.Server {
 	}
 }
 
-func registerAPIRoutes(_ chi.Router, _ *Handlers) {
+func registerAPIRoutes(r chi.Router, h *Handlers) {
 	// * register your routes here
+	r.Get("/next-id", h.genH.Generate)
 }
