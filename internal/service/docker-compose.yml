@@ -1,0 +1,69 @@
+services:
+  gen-1:
+    container_name: gen-1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+      - "9091:9090"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ID: 1
+      # Add other environment variables as needed
+    restart: unless-stopped
+    # distroless image has no shell/curl; healthcheck disabled here.
+    # Use an orchestrator probe (K8s httpGet /healthz:8080) or add a health binary to the image.
+    healthcheck:
+      test: [ "NONE" ]
+
+  gen-2:
+    container_name: gen-2
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8080"
+      - "9092:9090"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ID: 2
+      # Add other environment variables as needed
+    restart: unless-stopped
+    # distroless image has no shell/curl; healthcheck disabled here.
+    # Use an orchestrator probe (K8s httpGet /healthz:8080) or add a health binary to the image.
+    healthcheck:
+      test: [ "NONE" ]
+
+  gen-3:
+    container_name: gen-3
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8080"
+      - "9093:9090"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ID: 3
+      # Add other environment variables as needed
+    restart: unless-stopped
+    # distroless image has no shell/curl; healthcheck disabled here.
+    # Use an orchestrator probe (K8s httpGet /healthz:8080) or add a health binary to the image.
+    healthcheck:
+      test: [ "NONE" ]
+
+  # Uncomment to enable OpenTelemetry collection
+  # otel-collector:
+  #   image: otel/opentelemetry-collector-contrib:latest
+  #   ports:
+  #     - "4317:4317"   # OTLP gRPC
+  #     - "4318:4318"   # OTLP HTTP
+  #   volumes:
+  #     - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yaml
