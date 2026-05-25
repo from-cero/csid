@@ -121,7 +121,7 @@ func TestNode_Generate_BeforeEpoch(t *testing.T) {
 }
 
 func TestNode_Generate_TimestampOverflow(t *testing.T) {
-	// 3-bit timestamp -> maxTimestamp = 7 ms
+	// 3-bit timestamp -> maxTimestamp = 7ms
 	// Epoch 100 years ago -> ms count will be enormous
 	r := &mockRegistry{nodeID: 0}
 	oldEpoch := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
