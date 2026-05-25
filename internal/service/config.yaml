@@ -1,4 +1,0 @@
-app:
-  name: cero-id-generator
-  version: 0.1.0
-  env: production

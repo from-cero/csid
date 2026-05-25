@@ -2,9 +2,11 @@ package server
 
 import (
 	"google.golang.org/grpc"
+
+	"github.com/from-cero/csid/service/internal/config"
 )
 
-func newGRPCServer(_ *Services) *grpc.Server {
-	// TODO
+// TODO
+func newGRPCServer(_ *config.GRPCConfig, _ *Services) *grpc.Server {
 	return grpc.NewServer()
 }

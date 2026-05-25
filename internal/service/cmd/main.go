@@ -8,14 +8,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/from-cero/csid"
-	"github.com/from-cero/csid/generator/internal/config"
-	"github.com/from-cero/csid/generator/internal/handler"
-	"github.com/from-cero/csid/generator/internal/server"
-	"github.com/from-cero/csid/generator/internal/service"
-	"github.com/from-cero/csid/generator/internal/telemetry"
-	"github.com/from-cero/csid/registry"
+	"github.com/from-cero/csid/service/internal/config"
+	"github.com/from-cero/csid/service/internal/server"
+	"github.com/from-cero/csid/service/internal/telemetry"
 )
 
 func main() {
@@ -27,7 +24,7 @@ func main() {
 
 func run() error {
 	// parse command-line flags
-	cfgPath := flag.String("config", "config.yaml", "path to config file")
+	cfgPath := flag.String("config", "config.yml", "path to config file")
 	flag.Parse()
 
 	// load & validate configs
@@ -37,27 +34,45 @@ func run() error {
 	}
 
 	// init loggers
-	logger := telemetry.NewLogger(cfg.Logging, cfg.App)
+	logger := telemetry.NewLogger(&cfg.Logging, &cfg.App)
 	slog.SetDefault(logger)
 
 	// setup signal handling for graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// acquire node identity
-	reg, err := registry.NewStaticRegistry()
+	// init tracing
+	shutdownTracer, err := telemetry.NewTracerProvider(ctx, &cfg.Telemetry.Tracing, &cfg.App)
 	if err != nil {
-		return fmt.Errorf("create static registry: %w", err)
+		return fmt.Errorf("init tracer: %w", err)
 	}
+	defer func() {
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTracer(shutCtx); err != nil {
+			slog.Error("failed to shutdown tracer", "error", err)
+		}
+	}()
+
+	// init metrics
+	metricsHandler, shutdownMeter, err := telemetry.NewMeterProvider(&cfg.Telemetry.Metrics)
+	if err != nil {
+		return fmt.Errorf("init metrics: %w", err)
+	}
+	defer func() {
+		shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := shutdownMeter(shutCtx); err != nil {
+			slog.Error("failed to shutdown meter provider", "error", err)
+		}
+	}()
+
+	// * acquire database, init cache client, etc.
 
 	// wire dependencies
-	node, err := csid.New(ctx, reg)
-	if err != nil {
-		return fmt.Errorf("create csid node: %w", err)
-	}
-	services := &server.Services{Generator: service.NewGenerator(node)}
-	handlers := &server.Handlers{Generator: handler.NewGenerator(services.Generator)}
-	srv := server.New(cfg.Server, handlers, services)
+	services := server.NewServices()
+	handlers := server.NewHandlers(metricsHandler, services)
+	srv := server.New(&cfg.Server, handlers, services)
 
 	// start server
 	if err := srv.Start(ctx); err != nil {

@@ -4,44 +4,31 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/go-playground/validator/v10"
+
+	"github.com/from-cero/csid/service/internal/apperror"
 )
 
 // Config acts as root configuration that holds all settings.
 type Config struct {
-	App     AppConfig     `koanf:"app"`
-	Server  ServerConfig  `koanf:"server"`
-	Logging LoggingConfig `koanf:"logging"`
+	App       AppConfig       `koanf:"app"`
+	Server    ServerConfig    `koanf:"server"`
+	Logging   LoggingConfig   `koanf:"logging"`
+	Telemetry TelemetryConfig `koanf:"telemetry"`
 }
 
 // AppConfig defines the application metadata.
 type AppConfig struct {
-	Name    string `koanf:"name"    validate:"required"`
-	Version string `koanf:"version" validate:"required"`
-	Env     string `koanf:"env"     validate:"oneof=development staging production"`
+	Name    string `koanf:"name"`
+	Version string `koanf:"version"`
+	Env     string `koanf:"env"`
 }
-
-// ServerConfig defines the server-related settings.
-type ServerConfig struct {
-	HTTPPort        int           `koanf:"http_port"        validate:"min=1,max=65535"`
-	GRPCPort        int           `koanf:"grpc_port"        validate:"min=1,max=65535"`
-	ShutdownTimeout time.Duration `koanf:"shutdown_timeout" validate:"required,gte=0"`
-}
-
-// LoggingConfig defines the logging level and format for the application.
-type LoggingConfig struct {
-	Level  string `koanf:"level"  validate:"oneof=debug info warn error"`
-	Format string `koanf:"format" validate:"oneof=json console"`
-}
-
-// ErrInvalidConfig ...
-var ErrInvalidConfig = errors.New("invalid config")
 
 func (c *Config) validate() error {
 	var errs []string
 
+	// validate struct fields based on tags
 	v := validator.New()
 	if err := v.Struct(c); err != nil {
 		if ve, ok := errors.AsType[validator.ValidationErrors](err); ok {
@@ -53,12 +40,14 @@ func (c *Config) validate() error {
 		}
 	}
 
-	if c.Server.HTTPPort == c.Server.GRPCPort {
+	// extend validations
+	if c.Server.HTTP.Port == c.Server.GRPC.Port {
 		errs = append(errs, "http and grpc ports cannot be the same")
 	}
 
+	// combine all errors into one
 	if len(errs) > 0 {
-		return fmt.Errorf("%w: %s", ErrInvalidConfig, strings.Join(errs, ", "))
+		return fmt.Errorf("%w: %s", apperror.ErrInvalidConfig, strings.Join(errs, ", "))
 	}
 	return nil
 }
