@@ -1,9 +1,0 @@
-.idea/
-.vscode/
-
-.env
-!.env.example
-
-bin/
-*.log
-coverage.out
