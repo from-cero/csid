@@ -2,17 +2,22 @@ package server
 
 import (
 	"net/http"
+
+	"github.com/from-cero/csid/service/internal/handler"
+	"github.com/from-cero/csid/service/internal/service"
 )
 
 // Services contains all the services of the application.
 // It is used to inject dependencies into handlers and servers.
 type Services struct {
 	// * add your services here
+	genS *service.Generator
 }
 
-func NewServices() *Services {
+func NewServices(genS *service.Generator) *Services {
 	return &Services{
 		// * initialize or add your services here
+		genS: genS,
 	}
 }
 
@@ -24,6 +29,7 @@ type Handlers struct {
 	metrics http.Handler
 
 	// * add your handlers here
+	genH *handler.Generator
 }
 
 func NewHandlers(metrics http.Handler, ss *Services) *Handlers {
@@ -31,5 +37,6 @@ func NewHandlers(metrics http.Handler, ss *Services) *Handlers {
 		metrics: metrics,
 
 		// * initialize or add your handlers here
+		genH: handler.NewGenerator(ss.genS),
 	}
 }

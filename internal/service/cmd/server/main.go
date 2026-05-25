@@ -10,8 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/from-cero/csid"
+	"github.com/from-cero/csid/registry"
+
 	"github.com/from-cero/csid/service/internal/config"
 	"github.com/from-cero/csid/service/internal/server"
+	"github.com/from-cero/csid/service/internal/service"
 	"github.com/from-cero/csid/service/internal/telemetry"
 )
 
@@ -69,8 +73,19 @@ func run() error {
 
 	// * acquire database, init cache client, etc.
 
+	// acquire node
+	reg, err := registry.NewStaticRegistry()
+	if err != nil {
+		return fmt.Errorf("init static registry: %w", err)
+	}
+	n, err := csid.New(ctx, reg)
+	if err != nil {
+		return fmt.Errorf("init node: %w", err)
+	}
+
 	// wire dependencies
-	services := server.NewServices()
+	genS := service.NewGenerator(n)
+	services := server.NewServices(genS)
 	handlers := server.NewHandlers(metricsHandler, services)
 	srv := server.New(&cfg.Server, handlers, services)
 

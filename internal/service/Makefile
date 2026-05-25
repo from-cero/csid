@@ -23,10 +23,10 @@ lint:
 	golangci-lint run ./...
 
 build:
-	$(ENV) go build $(BUILD_FLAGS) -o bin/abc ./cmd/abc
+	$(ENV) go build $(BUILD_FLAGS) -o bin/server ./cmd/server
 
 dev:
-	go run cmd/abc/main.go
+	go run cmd/server/main.go
 
 test:
 	go test -race -v --cover ./...
