@@ -12,7 +12,6 @@ import (
 
 	"github.com/from-cero/csid"
 	"github.com/from-cero/csid/registry"
-
 	"github.com/from-cero/csid/service/internal/config"
 	"github.com/from-cero/csid/service/internal/server"
 	"github.com/from-cero/csid/service/internal/service"
