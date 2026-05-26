@@ -1,0 +1,191 @@
+package redis
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"strconv"
+	"sync"
+	"time"
+
+	goredis "github.com/redis/go-redis/v9"
+)
+
+// RedisRegistry is a Registry that coordinates node ID assignment through Redis.
+// Each instance atomically claims a unique slot (0..maxNodeID), holds it alive
+// via TTL and a background heartbeat, and releases it on Close.
+//
+// If a process dies without releasing, the slot is reclaimed automatically when
+// the TTL expires. All methods are safe for concurrent use.
+type RedisRegistry struct {
+	client  *goredis.Client
+	cfg     redisConfig
+	maxNode int64
+	ownerID string // unique per-process identity stored as the Redis value
+
+	mu        sync.Mutex
+	nodeID    int64              // -1 means not yet acquired
+	acquiring bool               // true while a Redis Acquire call is in flight
+	stopHB    context.CancelFunc // cancels the heartbeat goroutine
+	hbDone    chan struct{}      // closed when the heartbeat goroutine exits
+}
+
+// NewRedisRegistry creates a RedisRegistry. The caller provides a pre-configured
+// Redis client and the inclusive upper bound of valid node IDs (e.g. 4095 for a
+// 12-bit node field). The registry does not touch Redis until Acquire is called.
+func NewRedisRegistry(client *goredis.Client, maxNodeID int64, opt ...RedisOption) (*RedisRegistry, error) {
+	if client == nil {
+		return nil, fmt.Errorf("redis client cannot be nil")
+	}
+	if maxNodeID < 0 {
+		return nil, ErrInvalidMaxNodeID
+	}
+
+	cfg := defaultConfig()
+	for _, o := range opt {
+		o(&cfg)
+	}
+	if cfg.ttl <= 3*cfg.heartbeatInterval {
+		return nil, ErrInvalidConfig
+	}
+
+	ownerID, err := generateOwnerID()
+	if err != nil {
+		return nil, fmt.Errorf("generate owner id: %w", err)
+	}
+
+	return &RedisRegistry{
+		client:  client,
+		cfg:     cfg,
+		maxNode: maxNodeID,
+		ownerID: ownerID,
+		nodeID:  -1,
+	}, nil
+}
+
+// Acquire claims a free node ID slot in Redis and starts a background heartbeat
+// to maintain ownership. Idempotent: a second call returns the same node ID
+// without touching Redis.
+func (r *RedisRegistry) Acquire(ctx context.Context) (int64, error) {
+	r.mu.Lock()
+	if r.nodeID != -1 {
+		id := r.nodeID
+		r.mu.Unlock()
+		return id, nil
+	}
+	if r.acquiring {
+		r.mu.Unlock()
+		return -1, ErrAcquireInProgress
+	}
+	r.acquiring = true
+	r.mu.Unlock()
+
+	ttlMs := r.cfg.ttl.Milliseconds()
+	result, err := acquireScript.Run(
+		ctx, r.client, nil,
+		r.cfg.keyPrefix, strconv.FormatInt(r.maxNode, 10), r.ownerID, strconv.FormatInt(ttlMs, 10),
+	).Int64()
+
+	r.mu.Lock()
+	r.acquiring = false
+	if err != nil {
+		r.mu.Unlock()
+		return -1, err
+	}
+	if result == -1 {
+		r.mu.Unlock()
+		return -1, ErrNoNodeAvailable
+	}
+	r.nodeID = result
+	hbCtx, cancel := context.WithCancel(context.Background())
+	r.stopHB = cancel
+	r.hbDone = make(chan struct{})
+	r.mu.Unlock()
+
+	go r.runHeartbeat(hbCtx, result)
+
+	return result, nil
+}
+
+// Release stops the heartbeat goroutine, then deletes the node key in Redis.
+// If the key was already gone (TTL expired), Release still returns nil.
+func (r *RedisRegistry) Release(ctx context.Context) error {
+	r.mu.Lock()
+	id := r.nodeID
+	if id == -1 {
+		r.mu.Unlock()
+		return ErrNotAcquired
+	}
+	r.nodeID = -1
+	stopHB := r.stopHB
+	hbDone := r.hbDone
+	r.mu.Unlock()
+
+	stopHB()
+	<-hbDone
+
+	key := r.nodeKey(id)
+	_, err := releaseScript.Run(ctx, r.client, []string{key}, r.ownerID).Int64()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RedisRegistry) runHeartbeat(ctx context.Context, nodeID int64) {
+	defer close(r.hbDone)
+
+	key := r.nodeKey(nodeID)
+	ttlMs := r.cfg.ttl.Milliseconds()
+	ticker := time.NewTicker(r.cfg.heartbeatInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Bound the Redis call to half the heartbeat interval so the goroutine
+			// never blocks longer than one interval regardless of client-level timeouts.
+			// This upholds the guarantee that onHeartbeatFailure fires within one
+			// heartbeatInterval of Redis becoming unreachable.
+			callCtx, cancel := context.WithTimeout(context.Background(), r.cfg.heartbeatInterval/2)
+			result, err := heartbeatScript.Run(
+				callCtx, r.client, []string{key},
+				r.ownerID, strconv.FormatInt(ttlMs, 10),
+			).Int64()
+			cancel()
+			if err != nil {
+				r.notifyFailure(err)
+				continue // transient Redis error; keep the heartbeat alive
+			}
+			if result == 0 {
+				// ownership was lost (key expired and was taken, or deleted externally)
+				r.notifyFailure(ErrOwnershipLost)
+				return
+			}
+		}
+	}
+}
+
+// notifyFailure dispatches onHeartbeatFailure in a separate goroutine so that
+// a callback calling Release does not deadlock against the heartbeat goroutine
+// waiting on hbDone.
+func (r *RedisRegistry) notifyFailure(err error) {
+	if r.cfg.onHeartbeatFailure != nil {
+		go r.cfg.onHeartbeatFailure(err)
+	}
+}
+
+func (r *RedisRegistry) nodeKey(id int64) string {
+	return fmt.Sprintf("%s:%d", r.cfg.keyPrefix, id)
+}
+
+func generateOwnerID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
