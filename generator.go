@@ -81,6 +81,12 @@ func (n *Node) Close(ctx context.Context) error {
 //     the generator will wait until the next millisecond before generating a new ID.
 //   - If YieldOnExhaustion is enabled, the generator yields (runtime.Gosched) instead of sleeping,
 //     allowing it to approach the theoretical maximum throughput at the cost of CPU.
+//
+// NOTES:
+//   - In practice, clock backward and sequence exhaustion should be extremely rare if the system is properly provisioned and monitored.
+//   - If it hits seq exhaustion often enough that the lock matters, it need more nodes.
+//   - That why it isn't designed to have a smarter lock or lock-free strategy and face the complexity of handling edge cases.
+//   - The current design is simpler and good enough for the expected use cases.
 func (n *Node) Generate() (ID, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
