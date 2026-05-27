@@ -52,7 +52,7 @@ func TestAcquire_ParsesOrdinal(t *testing.T) {
 }
 
 func TestAcquire_InvalidHostname(t *testing.T) {
-	invalidNames := []string{"nohyphen", "trailing-", "myapp-abc", "myapp-1.0"}
+	invalidNames := []string{"", "nohyphen", "trailing-", "myapp-abc", "myapp-1.0"}
 	for _, name := range invalidNames {
 		t.Run(name, func(t *testing.T) {
 			reg := newTestRegistry(t, 4095, statefulset.WithPodName(name))
