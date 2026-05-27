@@ -26,40 +26,40 @@ func newTestRegistry(
 	t *testing.T,
 	client *goredis.Client,
 	maxNode int64,
-	opts ...csidredis.RedisOption,
-) *csidredis.RedisRegistry {
+	opts ...csidredis.Option,
+) *csidredis.Registry {
 	t.Helper()
 	opts = append(
-		[]csidredis.RedisOption{
+		[]csidredis.Option{
 			csidredis.WithTTL(30 * time.Second),
 			csidredis.WithHeartbeatInterval(9 * time.Second),
 		}, opts...,
 	)
-	reg, err := csidredis.NewRedisRegistry(client, maxNode, opts...)
+	reg, err := csidredis.NewRegistry(client, maxNode, opts...)
 	if err != nil {
-		t.Fatalf("NewRedisRegistry() error = %v", err)
+		t.Fatalf("NewRegistry() error = %v", err)
 	}
 	return reg
 }
 
-func TestNewRedisRegistry_NilClient(t *testing.T) {
-	_, err := csidredis.NewRedisRegistry(nil, 4095)
+func TestNewRegistry_NilClient(t *testing.T) {
+	_, err := csidredis.NewRegistry(nil, 4095)
 	if err == nil {
 		t.Error("expected error for nil client, got nil")
 	}
 }
 
-func TestNewRedisRegistry_NegativeMaxNode(t *testing.T) {
+func TestNewRegistry_NegativeMaxNode(t *testing.T) {
 	client, _ := newTestClient(t)
-	_, err := csidredis.NewRedisRegistry(client, -1)
+	_, err := csidredis.NewRegistry(client, -1)
 	if !errors.Is(err, csidredis.ErrInvalidMaxNodeID) {
 		t.Errorf("error = %v, want ErrInvalidMaxNodeID", err)
 	}
 }
 
-func TestNewRedisRegistry_InvalidConfig_TTLTooShort(t *testing.T) {
+func TestNewRegistry_InvalidConfig_TTLTooShort(t *testing.T) {
 	client, _ := newTestClient(t)
-	_, err := csidredis.NewRedisRegistry(
+	_, err := csidredis.NewRegistry(
 		client, 4095,
 		csidredis.WithTTL(20*time.Second),
 		csidredis.WithHeartbeatInterval(10*time.Second), // 3x = 30s > 20s
@@ -178,13 +178,13 @@ func TestRelease_WhenKeyAlreadyGone(t *testing.T) {
 func TestHeartbeat_RefreshesTTL(t *testing.T) {
 	client, mr := newTestClient(t)
 	// Use a short heartbeat so the ticker fires in real time within the test.
-	reg, err := csidredis.NewRedisRegistry(
+	reg, err := csidredis.NewRegistry(
 		client, 4,
 		csidredis.WithTTL(500*time.Millisecond),
 		csidredis.WithHeartbeatInterval(100*time.Millisecond),
 	)
 	if err != nil {
-		t.Fatalf("NewRedisRegistry() error = %v", err)
+		t.Fatalf("NewRegistry() error = %v", err)
 	}
 
 	id, err := reg.Acquire(context.Background())
@@ -242,7 +242,7 @@ func TestHeartbeat_OwnershipLost_CallbackFired(t *testing.T) {
 
 	callbackErr := make(chan error, 1)
 	// Use a very short heartbeat so the goroutine fires within the test timeout.
-	reg, err := csidredis.NewRedisRegistry(
+	reg, err := csidredis.NewRegistry(
 		client, 4,
 		csidredis.WithTTL(500*time.Millisecond),
 		csidredis.WithHeartbeatInterval(100*time.Millisecond),
@@ -256,7 +256,7 @@ func TestHeartbeat_OwnershipLost_CallbackFired(t *testing.T) {
 		),
 	)
 	if err != nil {
-		t.Fatalf("NewRedisRegistry() error = %v", err)
+		t.Fatalf("NewRegistry() error = %v", err)
 	}
 
 	id, acquireErr := reg.Acquire(context.Background())
@@ -318,9 +318,9 @@ func TestHeartbeat_CallbackCanCallRelease(t *testing.T) {
 
 	releaseDone := make(chan struct{})
 	// Declare reg before the closure so the closure can capture it by reference.
-	var reg *csidredis.RedisRegistry
+	var reg *csidredis.Registry
 	var regErr error
-	reg, regErr = csidredis.NewRedisRegistry(
+	reg, regErr = csidredis.NewRegistry(
 		client, 4,
 		csidredis.WithTTL(500*time.Millisecond),
 		csidredis.WithHeartbeatInterval(100*time.Millisecond),
@@ -335,7 +335,7 @@ func TestHeartbeat_CallbackCanCallRelease(t *testing.T) {
 		),
 	)
 	if regErr != nil {
-		t.Fatalf("NewRedisRegistry() error = %v", regErr)
+		t.Fatalf("NewRegistry() error = %v", regErr)
 	}
 
 	id, acquireErr := reg.Acquire(context.Background())
@@ -357,7 +357,7 @@ func TestConcurrentAcquire_NoDuplicates(t *testing.T) {
 	const numInstances = 10
 	const maxNode = int64(9) // exactly 10 slots (0..9)
 
-	regs := make([]*csidredis.RedisRegistry, numInstances)
+	regs := make([]*csidredis.Registry, numInstances)
 	for i := range regs {
 		regs[i] = newTestRegistry(t, client, maxNode)
 	}

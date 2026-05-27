@@ -12,13 +12,13 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 )
 
-// RedisRegistry is a Registry that coordinates node ID assignment through Redis.
+// Registry is a Registry that coordinates node ID assignment through Redis.
 // Each instance atomically claims a unique slot (0..maxNodeID), holds it alive
 // via TTL and a background heartbeat, and releases it on Close.
 //
 // If a process dies without releasing, the slot is reclaimed automatically when
 // the TTL expires. All methods are safe for concurrent use.
-type RedisRegistry struct {
+type Registry struct {
 	client  *goredis.Client
 	cfg     redisConfig
 	maxNode int64
@@ -31,10 +31,10 @@ type RedisRegistry struct {
 	hbDone    chan struct{}      // closed when the heartbeat goroutine exits
 }
 
-// NewRedisRegistry creates a RedisRegistry. The caller provides a pre-configured
+// NewRegistry creates a Registry. The caller provides a pre-configured
 // Redis client and the inclusive upper bound of valid node IDs (e.g. 4095 for a
 // 12-bit node field). The registry does not touch Redis until Acquire is called.
-func NewRedisRegistry(client *goredis.Client, maxNodeID int64, opt ...RedisOption) (*RedisRegistry, error) {
+func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Registry, error) {
 	if client == nil {
 		return nil, fmt.Errorf("redis client cannot be nil")
 	}
@@ -55,7 +55,7 @@ func NewRedisRegistry(client *goredis.Client, maxNodeID int64, opt ...RedisOptio
 		return nil, fmt.Errorf("generate owner id: %w", err)
 	}
 
-	return &RedisRegistry{
+	return &Registry{
 		client:  client,
 		cfg:     cfg,
 		maxNode: maxNodeID,
@@ -67,7 +67,7 @@ func NewRedisRegistry(client *goredis.Client, maxNodeID int64, opt ...RedisOptio
 // Acquire claims a free node ID slot in Redis and starts a background heartbeat
 // to maintain ownership. Idempotent: a second call returns the same node ID
 // without touching Redis.
-func (r *RedisRegistry) Acquire(ctx context.Context) (int64, error) {
+func (r *Registry) Acquire(ctx context.Context) (int64, error) {
 	r.mu.Lock()
 	if r.nodeID != -1 {
 		id := r.nodeID
@@ -110,7 +110,7 @@ func (r *RedisRegistry) Acquire(ctx context.Context) (int64, error) {
 
 // Release stops the heartbeat goroutine, then deletes the node key in Redis.
 // If the key was already gone (TTL expired), Release still returns nil.
-func (r *RedisRegistry) Release(ctx context.Context) error {
+func (r *Registry) Release(ctx context.Context) error {
 	r.mu.Lock()
 	id := r.nodeID
 	if id == -1 {
@@ -133,7 +133,7 @@ func (r *RedisRegistry) Release(ctx context.Context) error {
 	return nil
 }
 
-func (r *RedisRegistry) runHeartbeat(ctx context.Context, nodeID int64) {
+func (r *Registry) runHeartbeat(ctx context.Context, nodeID int64) {
 	defer close(r.hbDone)
 
 	key := r.nodeKey(nodeID)
@@ -172,13 +172,13 @@ func (r *RedisRegistry) runHeartbeat(ctx context.Context, nodeID int64) {
 // notifyFailure dispatches onHeartbeatFailure in a separate goroutine so that
 // a callback calling Release does not deadlock against the heartbeat goroutine
 // waiting on hbDone.
-func (r *RedisRegistry) notifyFailure(err error) {
+func (r *Registry) notifyFailure(err error) {
 	if r.cfg.onHeartbeatFailure != nil {
 		go r.cfg.onHeartbeatFailure(err)
 	}
 }
 
-func (r *RedisRegistry) nodeKey(id int64) string {
+func (r *Registry) nodeKey(id int64) string {
 	return fmt.Sprintf("%s:%d", r.cfg.keyPrefix, id)
 }
 
