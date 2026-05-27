@@ -7,7 +7,7 @@ import (
 
 func TestNewRegistry_NoEnvVar(t *testing.T) {
 	t.Setenv("NODE_ID", "")
-	_, err := NewRegistry()
+	_, err := NewRegistry("NODE_ID")
 	if err == nil {
 		t.Error("NewRegistry() expected error when NODE_ID is unset, got nil")
 	}
@@ -15,15 +15,26 @@ func TestNewRegistry_NoEnvVar(t *testing.T) {
 
 func TestNewRegistry_InvalidValue(t *testing.T) {
 	t.Setenv("NODE_ID", "abc")
-	_, err := NewRegistry()
+	_, err := NewRegistry("NODE_ID")
 	if err == nil {
 		t.Error("NewRegistry() expected error for non-integer NODE_ID, got nil")
 	}
 }
 
+func TestNewRegistry_EmptyKeyDefaultsToNodeID(t *testing.T) {
+	t.Setenv("NODE_ID", "42")
+	r, err := NewRegistry("")
+	if err != nil {
+		t.Fatalf("NewRegistry(\"\") error = %v", err)
+	}
+	if r.nodeID != 42 {
+		t.Errorf("nodeID = %d, want 42", r.nodeID)
+	}
+}
+
 func TestNewRegistry_Valid(t *testing.T) {
 	t.Setenv("NODE_ID", "7")
-	r, err := NewRegistry()
+	r, err := NewRegistry("NODE_ID")
 	if err != nil {
 		t.Fatalf("NewRegistry() error = %v", err)
 	}
@@ -34,7 +45,7 @@ func TestNewRegistry_Valid(t *testing.T) {
 
 func TestRegistry_Acquire(t *testing.T) {
 	t.Setenv("NODE_ID", "99")
-	r, err := NewRegistry()
+	r, err := NewRegistry("NODE_ID")
 	if err != nil {
 		t.Fatalf("NewRegistry() error = %v", err)
 	}
@@ -49,7 +60,7 @@ func TestRegistry_Acquire(t *testing.T) {
 
 func TestRegistry_Release(t *testing.T) {
 	t.Setenv("NODE_ID", "1")
-	r, err := NewRegistry()
+	r, err := NewRegistry("NODE_ID")
 	if err != nil {
 		t.Fatalf("NewRegistry() error = %v", err)
 	}
