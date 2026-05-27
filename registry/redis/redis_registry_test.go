@@ -419,3 +419,137 @@ func TestAcquireRelease_SlotIsReclaimable(t *testing.T) {
 	}
 	_ = reg2.Release(context.Background())
 }
+
+// TestNewRegistry_TTLExactlyThreeTimesHeartbeat verifies that TTL == 3x
+// heartbeat interval is rejected (must be strictly greater than 3x).
+func TestNewRegistry_TTLExactlyThreeTimesHeartbeat(t *testing.T) {
+	client, _ := newTestClient(t)
+	_, err := csidredis.NewRegistry(
+		client, 4095,
+		csidredis.WithTTL(30*time.Second),
+		csidredis.WithHeartbeatInterval(10*time.Second), // 3x = 30s == TTL, not >
+	)
+	if !errors.Is(err, csidredis.ErrInvalidConfig) {
+		t.Errorf("error = %v, want ErrInvalidConfig when TTL == 3x heartbeat", err)
+	}
+}
+
+// TestAcquire_CustomKeyPrefix verifies that WithKeyPrefix changes the keys
+// written to Redis.
+func TestAcquire_CustomKeyPrefix(t *testing.T) {
+	client, mr := newTestClient(t)
+	const customPrefix = "myapp:workers"
+	reg, err := csidredis.NewRegistry(
+		client, 4,
+		csidredis.WithKeyPrefix(customPrefix),
+		csidredis.WithTTL(30*time.Second),
+		csidredis.WithHeartbeatInterval(9*time.Second),
+	)
+	if err != nil {
+		t.Fatalf("NewRegistry() error = %v", err)
+	}
+
+	id, err := reg.Acquire(context.Background())
+	if err != nil {
+		t.Fatalf("Acquire() error = %v", err)
+	}
+
+	expectedKey := fmt.Sprintf("%s:%d", customPrefix, id)
+	if _, err := mr.Get(expectedKey); err != nil {
+		t.Errorf("expected key %q not found in Redis after Acquire: %v", expectedKey, err)
+	}
+
+	// Default prefix key must not exist.
+	defaultKey := fmt.Sprintf("csid:node:%d", id)
+	if _, err := mr.Get(defaultKey); err == nil {
+		t.Errorf("default-prefix key %q should not exist when custom prefix is used", defaultKey)
+	}
+
+	_ = reg.Release(context.Background())
+}
+
+// TestHeartbeat_TransientError_CallbackFiredAndContinues verifies that a
+// transient Redis error (non-ownership-loss) fires the onHeartbeatFailure
+// callback but does NOT stop the heartbeat goroutine -- subsequent heartbeats
+// still refresh the TTL once Redis recovers.
+func TestHeartbeat_TransientError_CallbackFiredAndContinues(t *testing.T) {
+	client, mr := newTestClient(t)
+
+	callbackErrs := make(chan error, 4)
+	reg, err := csidredis.NewRegistry(
+		client, 4,
+		csidredis.WithTTL(500*time.Millisecond),
+		csidredis.WithHeartbeatInterval(100*time.Millisecond),
+		csidredis.WithOnHeartbeatFailure(func(cbErr error) {
+			select {
+			case callbackErrs <- cbErr:
+			default:
+			}
+		}),
+	)
+	if err != nil {
+		t.Fatalf("NewRegistry() error = %v", err)
+	}
+
+	id, err := reg.Acquire(context.Background())
+	if err != nil {
+		t.Fatalf("Acquire() error = %v", err)
+	}
+	key := fmt.Sprintf("csid:node:%d", id)
+
+	// Inject a transient Redis error so the next heartbeat tick fails.
+	mr.SetError("ERR simulated transient failure")
+
+	// Wait for the callback to fire.
+	select {
+	case cbErr := <-callbackErrs:
+		if errors.Is(cbErr, csidredis.ErrOwnershipLost) {
+			t.Errorf("transient error should not be ErrOwnershipLost, got %v", cbErr)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("onHeartbeatFailure not called within 2s for transient Redis error")
+	}
+
+	// Clear the injected error so Redis is healthy again.
+	mr.SetError("")
+
+	// The key must still exist (heartbeat goroutine did not exit).
+	if _, err := mr.Get(key); err != nil {
+		t.Fatalf("key %q gone after transient error -- heartbeat goroutine exited prematurely", key)
+	}
+
+	// Give the goroutine time to refresh the TTL at least once more.
+	time.Sleep(250 * time.Millisecond)
+	if ttl := mr.TTL(key); ttl <= 0 {
+		t.Errorf("TTL after recovery = %v, want > 0 (heartbeat goroutine stopped)", ttl)
+	}
+
+	_ = reg.Release(context.Background())
+}
+
+// TestAcquire_AfterRelease_SameInstance verifies that a single registry
+// instance can Acquire again after Release without errors.
+func TestAcquire_AfterRelease_SameInstance(t *testing.T) {
+	client, _ := newTestClient(t)
+	const maxNode = int64(0) // single slot makes the re-acquired ID deterministic
+
+	reg := newTestRegistry(t, client, maxNode)
+
+	id1, err := reg.Acquire(context.Background())
+	if err != nil {
+		t.Fatalf("first Acquire() error = %v", err)
+	}
+	if err := reg.Release(context.Background()); err != nil {
+		t.Fatalf("Release() error = %v", err)
+	}
+
+	id2, err := reg.Acquire(context.Background())
+	if err != nil {
+		t.Fatalf("second Acquire() on same instance error = %v", err)
+	}
+	if id1 != id2 {
+		t.Errorf("re-acquired ID = %d, want %d (same single slot)", id2, id1)
+	}
+
+	_ = reg.Release(context.Background())
+}

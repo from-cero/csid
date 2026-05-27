@@ -13,14 +13,14 @@ import (
 )
 
 // Registry is a Registry that coordinates node ID assignment through Redis.
-// Each instance atomically claims a unique slot (0..maxNodeID), holds it alive
+// Each instance atomically claims a unique slot (0...maxNodeID), holds it alive
 // via TTL and a background heartbeat, and releases it on Close.
 //
 // If a process dies without releasing, the slot is reclaimed automatically when
 // the TTL expires. All methods are safe for concurrent use.
 type Registry struct {
 	client  *goredis.Client
-	cfg     redisConfig
+	cfg     config
 	maxNode int64
 	ownerID string // unique per-process identity stored as the Redis value
 

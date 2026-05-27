@@ -3,7 +3,7 @@ package redis
 import "errors"
 
 var (
-	// ErrNoNodeAvailable is returned when all node ID slots (0..maxNodeID) are
+	// ErrNoNodeAvailable is returned when all node ID slots (0...maxNodeID) are
 	// occupied in Redis and Acquire cannot claim one.
 	ErrNoNodeAvailable = errors.New("no node ID available: all slots are occupied")
 
