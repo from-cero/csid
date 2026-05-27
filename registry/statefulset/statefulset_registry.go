@@ -8,13 +8,65 @@ import (
 	"sync"
 )
 
-// Registry derives the node ID from the Kubernetes
-// StatefulSet pod ordinal embedded in the pod hostname (e.g. "myapp-3" -> 3).
+// Registry derives the node ID from the Kubernetes StatefulSet pod ordinal
+// embedded in the pod hostname (e.g. "myapp-3" -> 3).
 //
 // Kubernetes guarantees that each pod in a StatefulSet receives a unique, stable
-// ordinal, so no external coordination is required. Acquire parses the ordinal
-// from the hostname once and caches it; Release clears the cache. Both methods
-// are safe for concurrent use.
+// ordinal, so no external coordination is required for the common case. Acquire
+// parses the ordinal from the hostname once and caches it; Release clears the
+// cache. Both methods are safe for concurrent use.
+//
+// # Production setup
+//
+// For safe production use, apply all the following in your StatefulSet manifest:
+//
+//  1. Set podManagementPolicy: OrderedReady (the default). Never use Parallel
+//     if ID uniqueness matters -- Parallel starts all pods simultaneously and
+//     makes ordinal collisions likely.
+//
+//  2. Set updateStrategy.rollingUpdate.maxUnavailable: 1 (the default) and
+//     never perform forced deletes (kubectl delete pod --force --grace-period=0)
+//     unless you accept a brief duplicate-ID window. Document this in your
+//     runbooks.
+//
+//  3. Add a preStop sleep >= your application's shutdown flush time so the old
+//     pod stops generating IDs before the new one starts:
+//
+//     lifecycle:
+//     preStop:
+//     exec:
+//     command: ["sh", "-c", "sleep 5"]
+//
+//  4. Set terminationGracePeriodSeconds to at least preStop sleep + 10s.
+//
+//  5. Avoid scaling down and then reusing the same ordinal range for a new
+//     workload. Ordinals that previously issued IDs should be considered
+//     "burned" until the ID TTL or retention window has passed.
+//
+// # Unresolvable risks (WARNING)
+//
+// The following risks CANNOT be fully eliminated without an external registry
+// (Redis, etcd, or similar):
+//
+//   - Rolling update overlap: K8s terminates the old pod and starts the new one
+//     with the same ordinal. During terminationGracePeriodSeconds both processes
+//     may be alive. preStop sleep reduces the window but does not close it.
+//     There is no built-in fence.
+//
+//   - Forced delete (--force --grace-period=0): K8s recreates the pod
+//     immediately. The old process may still be running on the node. Two
+//     processes will share the same node ID with no coordination.
+//
+//   - Clock drift on restart: lastMs is in-memory only and resets to 0 on every
+//     New(). If the wall clock has drifted backward since the last run, the
+//     generator will reissue timestamps it already used. The generator's
+//     MaxClockDrift guard only covers live drift, not cross-restart drift.
+//
+//   - Split-brain / network partition: two pods with the same ordinal can operate
+//     independently if the network splits after startup.
+//
+// If your workload cannot tolerate any duplicate IDs, use the Redis registry
+// instead. See RISK.md for the full risk breakdown.
 type Registry struct {
 	cfg     config
 	maxNode int64
