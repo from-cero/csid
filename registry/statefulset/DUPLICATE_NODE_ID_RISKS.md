@@ -1,5 +1,7 @@
 # Risks of Duplicate Node IDs
 
+---
+
 ## Ordinal Risks
 
 Ordinal is unique by name, not by running process -- two pods with the same ordinal can briefly
