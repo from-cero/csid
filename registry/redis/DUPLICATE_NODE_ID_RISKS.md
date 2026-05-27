@@ -1,115 +1,86 @@
-# Duplicate Node ID: Risks and Gaps
-
-This document tracks what the Redis registry solves, what it does not solve, and under
-what exact conditions a duplicate node ID -- and therefore a duplicate generated ID -- can
-occur.
+# Risks of Duplicate Node IDs
 
 ---
 
 ## What Is Solved
 
-### 1. Concurrent startup race
-**Risk:** Two instances start simultaneously and both claim the same slot.
+---
 
-**How solved:** The acquire Lua script runs atomically on Redis. `SET key owner NX PX ttl`
-is all-or-nothing per slot. Lua execution is single-threaded on Redis, so two scripts
-running concurrently cannot both succeed on the same slot. One wins, the other advances to
-the next slot.
-
-**Status: Eliminated.**
+- **Risk:** Two instances start simultaneously and both claim the same slot.
+    - **How solved:** The acquire Lua script runs atomically on Redis. `SET key owner NX PX ttl`
+      is all-or-nothing per slot. Lua execution is single-threaded on Redis, so two scripts
+      running concurrently cannot both succeed on the same slot. One wins, the other advances to
+      the next slot.
+    - **Status: Eliminated.**
 
 ---
 
-### 2. Crash without graceful release
-**Risk:** An instance crashes (OOM, kill -9, hardware failure) without calling `Release`.
-The slot is held in Redis forever, reducing available capacity.
-
-**How solved:** Every slot key has a TTL. If the heartbeat stops (because the process is
-dead), the key expires and the slot becomes available automatically.
-
-**Status: Eliminated within one TTL window (default 30s).**
+- **Risk:** An instance crashes (OOM, kill -9, hardware failure) without calling `Release`.
+  The slot is held in Redis forever, reducing available capacity.
+    - **How solved:** Every slot key has a TTL. If the heartbeat stops (because the process is
+      dead), the key expires and the slot becomes available automatically.
+    - **Status: Eliminated within one TTL window (default 30s).**
 
 ---
 
-### 3. Stale slot from a previous process lifetime
-**Risk:** A process restarts. The previous lifetime's slot key may still be in Redis with
-the old ownerID. The new process must not accidentally inherit or conflict with it.
-
-**How solved:** Each `NewRedisRegistry` call generates a new `ownerID` (`crypto/rand`
-UUID). The new instance's Lua script scans with `SET NX` -- it will skip any key that still
-exists from the previous lifetime. If the previous key expired, the new instance can claim
-that slot freely.
-
-**Status: Eliminated.**
+- **Risk:** A process restarts. The previous lifetime's slot key may still be in Redis with
+  the old ownerID. The new process must not accidentally inherit or conflict with it.
+    - **How solved:** Each `NewRedisRegistry` call generates a new `ownerID` (`crypto/rand`
+      UUID). The new instance's Lua script scans with `SET NX` -- it will skip any key that still
+      exists from the previous lifetime. If the previous key expired, the new instance can claim
+      that slot freely.
+    - **Status: Eliminated.**
 
 ---
 
-### 4. Accidental deletion of another instance's slot during release
-**Risk:** Instance A's TTL expires. Instance B claims slot 3. Then A's `Release` runs late
-and deletes slot 3, which now belongs to B.
-
-**How solved:** The release Lua script checks `GET key == ownerID` before `DEL`. A's
-`ownerID` does not match B's, so the `DEL` is skipped. B keeps its slot.
-
-**Status: Eliminated.**
+- **Risk:** Instance A's TTL expires. Instance B claims slot 3. Then A's `Release` runs late
+  and deletes slot 3, which now belongs to B.
+    - **How solved:** The release Lua script checks `GET key == ownerID` before `DEL`. A's
+      `ownerID` does not match B's, so the `DEL` is skipped. B keeps its slot.
+    - **Status: Eliminated.**
 
 ---
 
-### 5. Heartbeat refreshing the wrong instance's key
-**Risk:** Same scenario -- A's TTL expires, B claims slot 3, A's heartbeat tries to refresh.
-
-**How solved:** The heartbeat Lua script checks `GET key == ownerID` before `PEXPIRE`. A
-sees a mismatch, returns 0, fires `onHeartbeatFailure(ErrOwnershipLost)`, and the heartbeat
-goroutine exits.
-
-**Status: Eliminated.**
+- **Risk:** Same scenario -- A's TTL expires, B claims slot 3, A's heartbeat tries to refresh.
+    - **How solved:** The heartbeat Lua script checks `GET key == ownerID` before `PEXPIRE`. A
+      sees a mismatch, returns 0, fires `onHeartbeatFailure(ErrOwnershipLost)`, and the heartbeat
+      goroutine exits.
 
 ---
 
-### 6. Concurrent Acquire calls on the same registry leaking a heartbeat goroutine
-**Risk:** Two goroutines call `Acquire` on the same `RedisRegistry` simultaneously. Both
-see `nodeID == -1`, both run the Lua script, both claim different slots. Only the second
-slot is tracked; the first heartbeat goroutine runs forever with no cancel handle.
-
-**How solved:** The `acquiring bool` flag under the mutex makes concurrent Acquire calls
-return `ErrAcquireInProgress` after the first call wins the flag. Only one Redis call is
-ever in flight per registry instance.
-
-**Status: Eliminated.**
+- **Risk:** Two goroutines call `Acquire` on the same `RedisRegistry` simultaneously. Both
+  see `nodeID == -1`, both run the Lua script, both claim different slots. Only the second
+  slot is tracked; the first heartbeat goroutine runs forever with no cancel handle.
+    - **How solved:** The `acquiring bool` flag under the mutex makes concurrent Acquire calls
+      return `ErrAcquireInProgress` after the first call wins the flag. Only one Redis call is
+      ever in flight per registry instance.
 
 ---
 
-### 7. Heartbeat Redis call blocking past heartbeat interval
-**Risk:** If the user's `*goredis.Client` has long `DialTimeout` / `ReadTimeout` settings,
-a Redis failure could block the heartbeat goroutine for minutes, delaying
-`onHeartbeatFailure` well past the `heartbeatInterval` boundary and into the TTL expiry
-window.
-
-**How solved:** Each heartbeat Redis call is wrapped in
-`context.WithTimeout(ctx, heartbeatInterval/2)`. The call is always bounded to half the
-tick interval, regardless of client-level timeout settings.
-
-**Status: Eliminated.**
+- **Risk:** If the user's `*goredis.Client` has long `DialTimeout` / `ReadTimeout` settings,
+  a Redis failure could block the heartbeat goroutine for minutes, delaying
+  `onHeartbeatFailure` well past the `heartbeatInterval` boundary and into the TTL expiry
+  window.
+    - **How solved:** Each heartbeat Redis call is wrapped in
+      `context.WithTimeout(ctx, heartbeatInterval/2)`. The call is always bounded to half the
+      tick interval, regardless of client-level timeout settings.
 
 ---
 
-### 8. Calling Release from inside onHeartbeatFailure deadlocking
-**Risk:** The natural response to `ErrOwnershipLost` is to call `Release` in the callback.
-`Release` blocks on `<-hbDone`, which is closed by the heartbeat goroutine's `defer` --
-but the goroutine is blocked waiting for the callback to return. Deadlock.
-
-**How solved:** `onHeartbeatFailure` is always dispatched via `go r.cfg.onHeartbeatFailure(err)`.
-The heartbeat goroutine never blocks on the callback.
-
-**Status: Eliminated.**
+- **Risk:** The natural response to `ErrOwnershipLost` is to call `Release` in the callback.
+  `Release` blocks on `<-hbDone`, which is closed by the heartbeat goroutine's `defer` --
+  but the goroutine is blocked waiting for the callback to return. Deadlock.
+    - **How solved:** `onHeartbeatFailure` is always dispatched via `go r.cfg.onHeartbeatFailure(err)`.
+      The heartbeat goroutine never blocks on the callback.
 
 ---
 
-## What Is NOT Solved -- Remaining Gaps
+## Remaining Gaps
 
 ### Gap 1: Redis downtime after a successful Acquire (Primary residual risk)
 
 **Scenario:**
+
 ```
 T= 0s   Instance A holds slot 3. Last heartbeat just refreshed TTL to 30s.
 T= 1s   Redis becomes unreachable.
@@ -135,13 +106,14 @@ response is to stop the Node from generating new IDs (call `node.Close`) when th
 receives a non-transient error (i.e., after N consecutive failures, or immediately on
 `ErrOwnershipLost`).
 
-**Status: Application responsibility. Not automatically safe with nil callback.**
+**⇒ Application responsibility. Not automatically safe with nil callback.**
 
 ---
 
 ### Gap 2: Process pause longer than TTL (hard to defend against)
 
 **Scenario:**
+
 ```
 T= 0s   Instance A holds slot 3 (TTL=30s). Last heartbeat at T=0.
 T= 1s   A is paused (container cgroup freeze, VM live migration, long GC stop-the-world).
@@ -159,13 +131,14 @@ problem on the next heartbeat -- but it was already generating IDs while paused,
 instance may have claimed the slot in the gap.
 
 **Mitigation options:**
+
 - Keep TTL large relative to expected pause durations.
 - Use monotonic process liveness signals (e.g., Kubernetes liveness probes + eviction) to
   prevent VM migration while the process is active.
 - Accept the risk if the paused-process scenario is operationally impossible in your
   environment.
 
-**Status: Not solvable within the current design. Requires operational controls.**
+**!! Not solvable within the current design. Requires operational controls.**
 
 ---
 
@@ -183,17 +156,19 @@ interval, all running instances and any newly started instances are operating wi
 potentially overlapping node IDs.
 
 **Mitigation:**
+
 - Enable Redis AOF persistence with `appendfsync everysec` or `always`.
 - Use Redis Sentinel or a replicated setup so a restart does not imply data loss.
 - The current implementation does not enforce or check Redis persistence settings.
 
-**Status: Not solvable in this library. Requires Redis configuration / infrastructure.**
+**!! Not solvable in this library. Requires Redis configuration / infrastructure.**
 
 ---
 
 ### Gap 4: No fencing on the ID generator after ownership loss is detected
 
 **Scenario:**
+
 1. Heartbeat detects `ErrOwnershipLost`, calls `go onHeartbeatFailure(ErrOwnershipLost)`.
 2. The callback calls `node.Close()` (or `reg.Release()`).
 3. But `node.Close()` acquires a mutex. If a `Generate()` call is in flight (e.g., blocked
@@ -209,7 +184,7 @@ called from the callback, the real window is:
 `heartbeatInterval` (until detection) + goroutine scheduling latency + up to 10ms for
 an in-flight `Generate()` to complete.
 
-**Status: Inherent to the mutex-based generator design. Acceptable in practice (<10ms).**
+**!! Inherent to the mutex-based generator design. Acceptable in practice (<10ms).**
 
 ---
 
@@ -220,24 +195,30 @@ If all `maxNodeID + 1` slots are occupied at the moment of `Acquire`, the call r
 starting up at the same time), a slot may become available within seconds but the new
 instance fails to start.
 
-**Status: By design. The caller or orchestration layer owns retry policy.**
+**⇒ By design. The caller or orchestration layer owns retry policy.**
 
 ---
 
 ## Summary Table
 
-| Risk | Solved? | Mechanism |
-|---|---|---|
-| Concurrent startup race | Yes | Atomic Lua SET NX |
-| Crash without release | Yes | Key TTL auto-expiry |
-| Stale slot from prior lifetime | Yes | New ownerID per process |
-| Late Release deleting wrong owner's key | Yes | Ownership check Lua in release |
-| Heartbeat refreshing wrong owner's key | Yes | Ownership check Lua in heartbeat |
-| Concurrent Acquire goroutine leak | Yes | `acquiring` flag |
-| Heartbeat blocked past interval | Yes | `heartbeatInterval/2` call timeout |
-| Deadlock calling Release from callback | Yes | Callback dispatched via goroutine |
-| Redis downtime after Acquire | **Partial** | Callback fires in time; app must act |
-| Process pause longer than TTL | **No** | Operational controls required |
-| Redis restart with data loss | **No** | Redis persistence config required |
-| Generator fence after ownership loss | **Partial** | <10ms window; inherent to design |
-| No slot available at startup | **By design** | Caller owns retry policy |
+| Risk                                    | Solved?       | Mechanism                            |
+|-----------------------------------------|---------------|--------------------------------------|
+| Concurrent startup race                 | Yes           | Atomic Lua SET NX                    |
+| Crash without release                   | Yes           | Key TTL auto-expiry                  |
+| Stale slot from prior lifetime          | Yes           | New ownerID per process              |
+| Late Release deleting wrong owner's key | Yes           | Ownership check Lua in release       |
+| Heartbeat refreshing wrong owner's key  | Yes           | Ownership check Lua in heartbeat     |
+| Concurrent Acquire goroutine leak       | Yes           | `acquiring` flag                     |
+| Heartbeat blocked past interval         | Yes           | `heartbeatInterval/2` call timeout   |
+| Deadlock calling Release from callback  | Yes           | Callback dispatched via goroutine    |
+| Redis downtime after Acquire            | **Partial**   | Callback fires in time; app must act |
+| Process pause longer than TTL           | **No**        | Operational controls required        |
+| Redis restart with data loss            | **No**        | Redis persistence config required    |
+| Generator fence after ownership loss    | **Partial**   | <10ms window; inherent to design     |
+| No slot available at startup            | **By design** | Caller owns retry policy             |
+
+## Best Practices
+
+- The redis cluster should be highly available and resilient to avoid downtime risks.
+- The application must implement a robust `onHeartbeatFailure` callback to handle ownership loss
+  and Redis failures gracefully.
