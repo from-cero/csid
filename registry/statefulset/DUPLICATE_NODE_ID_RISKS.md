@@ -1,15 +1,28 @@
 # StatefulSet for Snowflake ID Generator -- Risks & Cons
 
-
 ## Machine ID (Ordinal) Risks
 
 Ordinal is unique by name, not by running process -- two pods with the same ordinal can briefly
 coexist during:
 
-- Rolling updates
-- Forced deletes (--force --grace-period=0)
-- podManagementPolicy: Parallel
-- Network partition / split-brain
+- Stuck terminating pod + manual intervention -> YES
+    - If a pod gets stuck in Terminating state (e.g. due to PVC issues or finalizers), it may remain alive for minutes.
+    - During this time, if an operator manually deletes the pod (without --force), the controller may create a new pod
+      immediately, leading to overlap.
+- Forced deletes (--force --grace-period=0) -> YES
+    - API object is removed immediately.
+    - Old container/process on node may still be alive briefly.
+    - StatefulSet controller may create replacement pod immediately.
+    - Result: old and new pod may overlap for a short time.
+- Node unreachable / network partition / split-brain -> YES
+    - Especially dangerous.
+    - Control plane may think node is dead and create replacement pod elsewhere.
+    - Original pod may still actually run on isolated node.
+    - This is classic split-brain behavior.
+- Controller inconsistency / delayed reconciliation -> YES
+    - If StatefulSet controller is slow to react to pod deletion or node failure, it may create replacement pod before
+      old pod is fully terminated.
+    - This can happen during control plane disruption or heavy load.
 
 No built-in startup fence -> new pod generates IDs before confirming old pod is dead
 

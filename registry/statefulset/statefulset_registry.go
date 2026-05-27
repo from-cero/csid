@@ -20,16 +20,12 @@ import (
 //
 // For safe production use, apply all the following in your StatefulSet manifest:
 //
-//  1. Set podManagementPolicy: OrderedReady (the default). Never use Parallel
-//     if ID uniqueness matters -- Parallel starts all pods simultaneously and
-//     makes ordinal collisions likely.
-//
-//  2. Set updateStrategy.rollingUpdate.maxUnavailable: 1 (the default) and
+//  1. Set updateStrategy.rollingUpdate.maxUnavailable: 1 (the default) and
 //     never perform forced deletes (kubectl delete pod --force --grace-period=0)
 //     unless you accept a brief duplicate-ID window. Document this in your
 //     runbooks.
 //
-//  3. Add a preStop sleep >= your application's shutdown flush time so the old
+//  2. Add a preStop sleep >= your application's shutdown flush time so the old
 //     pod stops generating IDs before the new one starts:
 //
 //     lifecycle:
@@ -37,9 +33,9 @@ import (
 //     exec:
 //     command: ["sh", "-c", "sleep 5"]
 //
-//  4. Set terminationGracePeriodSeconds to at least preStop sleep + 10s.
+//  3. Set terminationGracePeriodSeconds to at least preStop sleep + 10s.
 //
-//  5. Avoid scaling down and then reusing the same ordinal range for a new
+//  4. Avoid scaling down and then reusing the same ordinal range for a new
 //     workload. Ordinals that previously issued IDs should be considered
 //     "burned" until the ID TTL or retention window has passed.
 //
@@ -66,7 +62,7 @@ import (
 //     independently if the network splits after startup.
 //
 // If your workload cannot tolerate any duplicate IDs, use the Redis registry
-// instead. See RISK.md for the full risk breakdown.
+// instead. See DUPLICATE_NODE_ID_RISKS.md for the full risk breakdown.
 type Registry struct {
 	cfg     config
 	maxNode int64
