@@ -10,20 +10,9 @@ import (
 	"github.com/from-cero/csid/registry/statefulset"
 )
 
-func newTestRegistry(t *testing.T, maxNode int64, opts ...statefulset.Option) *statefulset.Registry {
+func newTestRegistry(t *testing.T, opts ...statefulset.Option) *statefulset.Registry {
 	t.Helper()
-	reg, err := statefulset.NewRegistry(maxNode, opts...)
-	if err != nil {
-		t.Fatalf("NewRegistry() error = %v", err)
-	}
-	return reg
-}
-
-func TestNewRegistry_NegativeMaxNode(t *testing.T) {
-	_, err := statefulset.NewRegistry(-1)
-	if !errors.Is(err, statefulset.ErrInvalidMaxNodeID) {
-		t.Errorf("error = %v, want ErrInvalidMaxNodeID", err)
-	}
+	return statefulset.NewRegistry(opts...)
 }
 
 func TestAcquire_ParsesOrdinal(t *testing.T) {
@@ -37,55 +26,39 @@ func TestAcquire_ParsesOrdinal(t *testing.T) {
 		{"x-100", 100},
 	}
 	for _, tc := range cases {
-		t.Run(tc.podName, func(t *testing.T) {
-			reg := newTestRegistry(t, 4095, statefulset.WithPodName(tc.podName))
-			id, err := reg.Acquire(context.Background())
-			if err != nil {
-				t.Fatalf("Acquire() error = %v", err)
-			}
-			if id != tc.want {
-				t.Errorf("Acquire() = %d, want %d", id, tc.want)
-			}
-			_ = reg.Release(context.Background())
-		})
+		t.Run(
+			tc.podName, func(t *testing.T) {
+				reg := newTestRegistry(t, statefulset.WithPodName(tc.podName))
+				id, err := reg.Acquire(context.Background())
+				if err != nil {
+					t.Fatalf("Acquire() error = %v", err)
+				}
+				if id != tc.want {
+					t.Errorf("Acquire() = %d, want %d", id, tc.want)
+				}
+				_ = reg.Release(context.Background())
+			},
+		)
 	}
 }
 
 func TestAcquire_InvalidHostname(t *testing.T) {
 	invalidNames := []string{"", "nohyphen", "trailing-", "myapp-abc", "myapp-1.0"}
 	for _, name := range invalidNames {
-		t.Run(name, func(t *testing.T) {
-			reg := newTestRegistry(t, 4095, statefulset.WithPodName(name))
-			_, err := reg.Acquire(context.Background())
-			if !errors.Is(err, statefulset.ErrInvalidHostname) {
-				t.Errorf("Acquire(%q) error = %v, want ErrInvalidHostname", name, err)
-			}
-		})
+		t.Run(
+			name, func(t *testing.T) {
+				reg := newTestRegistry(t, statefulset.WithPodName(name))
+				_, err := reg.Acquire(context.Background())
+				if !errors.Is(err, statefulset.ErrInvalidPodName) {
+					t.Errorf("Acquire(%q) error = %v, want ErrInvalidHostname", name, err)
+				}
+			},
+		)
 	}
-}
-
-func TestAcquire_OrdinalOutOfRange(t *testing.T) {
-	reg := newTestRegistry(t, 3, statefulset.WithPodName("myapp-5"))
-	_, err := reg.Acquire(context.Background())
-	if !errors.Is(err, statefulset.ErrOrdinalOutOfRange) {
-		t.Errorf("error = %v, want ErrOrdinalOutOfRange", err)
-	}
-}
-
-func TestAcquire_OrdinalAtMaxNode(t *testing.T) {
-	reg := newTestRegistry(t, 5, statefulset.WithPodName("myapp-5"))
-	id, err := reg.Acquire(context.Background())
-	if err != nil {
-		t.Fatalf("Acquire() error = %v", err)
-	}
-	if id != 5 {
-		t.Errorf("Acquire() = %d, want 5", id)
-	}
-	_ = reg.Release(context.Background())
 }
 
 func TestAcquire_Idempotent(t *testing.T) {
-	reg := newTestRegistry(t, 4095, statefulset.WithPodName("myapp-7"))
+	reg := newTestRegistry(t, statefulset.WithPodName("myapp-7"))
 
 	id1, err := reg.Acquire(context.Background())
 	if err != nil {
@@ -102,7 +75,7 @@ func TestAcquire_Idempotent(t *testing.T) {
 }
 
 func TestRelease_BeforeAcquire(t *testing.T) {
-	reg := newTestRegistry(t, 4095, statefulset.WithPodName("myapp-1"))
+	reg := newTestRegistry(t, statefulset.WithPodName("myapp-1"))
 	err := reg.Release(context.Background())
 	if !errors.Is(err, statefulset.ErrNotAcquired) {
 		t.Errorf("error = %v, want ErrNotAcquired", err)
@@ -110,7 +83,7 @@ func TestRelease_BeforeAcquire(t *testing.T) {
 }
 
 func TestRelease_AllowsReacquire(t *testing.T) {
-	reg := newTestRegistry(t, 4095, statefulset.WithPodName("myapp-2"))
+	reg := newTestRegistry(t, statefulset.WithPodName("myapp-2"))
 
 	if _, err := reg.Acquire(context.Background()); err != nil {
 		t.Fatalf("first Acquire() error = %v", err)
@@ -130,9 +103,13 @@ func TestRelease_AllowsReacquire(t *testing.T) {
 
 func TestAcquire_PodNameFuncError(t *testing.T) {
 	sentinelErr := fmt.Errorf("no hostname")
-	reg := newTestRegistry(t, 4095, statefulset.WithPodNameFunc(func() (string, error) {
-		return "", sentinelErr
-	}))
+	reg := newTestRegistry(
+		t, statefulset.WithPodNameFunc(
+			func() (string, error) {
+				return "", sentinelErr
+			},
+		),
+	)
 	_, err := reg.Acquire(context.Background())
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -143,7 +120,7 @@ func TestAcquire_PodNameFuncError(t *testing.T) {
 }
 
 func TestAcquire_ConcurrentCallsSameID(t *testing.T) {
-	reg := newTestRegistry(t, 4095, statefulset.WithPodName("myapp-4"))
+	reg := newTestRegistry(t, statefulset.WithPodName("myapp-4"))
 
 	const n = 20
 	ids := make([]int64, n)

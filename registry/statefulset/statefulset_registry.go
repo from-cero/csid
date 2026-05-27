@@ -70,35 +70,27 @@ import (
 // If your workload cannot tolerate any duplicate IDs, use the Redis registry
 // instead. See DUPLICATE_NODE_ID_RISKS.md for the full risk breakdown.
 type Registry struct {
-	cfg     config
-	maxNode int64
-
+	cfg    config
 	mu     sync.Mutex
 	nodeID int64 // -1 means not yet acquired
 }
 
-// NewRegistry creates a Registry. maxNodeID is the inclusive
-// upper bound of valid node IDs (e.g. 4095 for a 12-bit node field). The registry
-// does not read the hostname until Acquire is called.
-func NewRegistry(maxNodeID int64, opts ...Option) (*Registry, error) {
-	if maxNodeID < 0 {
-		return nil, ErrInvalidMaxNodeID
-	}
+// NewRegistry creates a Registry. The registry does not read the hostname
+// until Acquire is called.
+func NewRegistry(opts ...Option) *Registry {
 	cfg := defaultConfig()
 	for _, o := range opts {
 		o(&cfg)
 	}
 	return &Registry{
-		cfg:     cfg,
-		maxNode: maxNodeID,
-		nodeID:  -1,
-	}, nil
+		cfg:    cfg,
+		nodeID: -1,
+	}
 }
 
 // Acquire resolves the pod name, parses the StatefulSet ordinal from its last
-// dash-separated segment, validates it against maxNodeID, and returns it.
-// Idempotent: subsequent calls return the cached ordinal without re-reading the
-// hostname.
+// dash-separated segment, and returns it. Idempotent: subsequent calls return
+// the cached ordinal without re-reading the hostname.
 func (r *Registry) Acquire(_ context.Context) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -115,10 +107,6 @@ func (r *Registry) Acquire(_ context.Context) (int64, error) {
 	ordinal, err := parseOrdinal(podName)
 	if err != nil {
 		return -1, err
-	}
-
-	if ordinal > r.maxNode {
-		return -1, fmt.Errorf("%w: ordinal %d exceeds maxNodeID %d", ErrOrdinalOutOfRange, ordinal, r.maxNode)
 	}
 
 	r.nodeID = ordinal
@@ -143,11 +131,11 @@ func (r *Registry) Release(_ context.Context) error {
 func parseOrdinal(podName string) (int64, error) {
 	idx := strings.LastIndex(podName, "-")
 	if idx == -1 || idx == len(podName)-1 {
-		return -1, fmt.Errorf("%w: %q", ErrInvalidHostname, podName)
+		return -1, fmt.Errorf("%w: %q", ErrInvalidPodName, podName)
 	}
 	ordinal, err := strconv.ParseInt(podName[idx+1:], 10, 64)
 	if err != nil || ordinal < 0 {
-		return -1, fmt.Errorf("%w: %q", ErrInvalidHostname, podName)
+		return -1, fmt.Errorf("%w: %q", ErrInvalidPodName, podName)
 	}
 	return ordinal, nil
 }
