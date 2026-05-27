@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -19,18 +20,18 @@ type Registry struct {
 
 // NewRegistry creates a Registry by reading the named environment variable.
 // If envKey is empty, it defaults to "NODE_ID".
-// Returns an error if the variable is unset or not a valid integer.
+// Returns an error if the variable is unset or not a valid non-negative integer.
 func NewRegistry(envKey string) (*Registry, error) {
 	if envKey == "" {
 		envKey = "NODE_ID"
 	}
 	nodeIDStr := os.Getenv(envKey)
 	if nodeIDStr == "" {
-		return nil, ErrEmptyEnvNodeID
+		return nil, fmt.Errorf("env %s: %w", envKey, ErrEnvNodeIDNotSet)
 	}
 	nodeID, err := strconv.ParseInt(nodeIDStr, 10, 64)
-	if err != nil {
-		return nil, ErrInvalidEnvNodeID
+	if err != nil || nodeID < 0 {
+		return nil, fmt.Errorf("env %s=%q: %w", envKey, nodeIDStr, ErrInvalidEnvNodeID)
 	}
 	return &Registry{nodeID: nodeID}, nil
 }

@@ -2,22 +2,31 @@ package static
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
-func TestNewRegistry_NoEnvVar(t *testing.T) {
+func TestNewRegistry_NotSet(t *testing.T) {
 	t.Setenv("NODE_ID", "")
 	_, err := NewRegistry("NODE_ID")
-	if err == nil {
-		t.Error("NewRegistry() expected error when NODE_ID is unset, got nil")
+	if !errors.Is(err, ErrEnvNodeIDNotSet) {
+		t.Errorf("NewRegistry() error = %v, want ErrEnvNodeIDNotSet", err)
 	}
 }
 
 func TestNewRegistry_InvalidValue(t *testing.T) {
 	t.Setenv("NODE_ID", "abc")
 	_, err := NewRegistry("NODE_ID")
-	if err == nil {
-		t.Error("NewRegistry() expected error for non-integer NODE_ID, got nil")
+	if !errors.Is(err, ErrInvalidEnvNodeID) {
+		t.Errorf("NewRegistry() error = %v, want ErrInvalidEnvNodeID", err)
+	}
+}
+
+func TestNewRegistry_NegativeValue(t *testing.T) {
+	t.Setenv("NODE_ID", "-1")
+	_, err := NewRegistry("NODE_ID")
+	if !errors.Is(err, ErrInvalidEnvNodeID) {
+		t.Errorf("NewRegistry() error = %v, want ErrInvalidEnvNodeID", err)
 	}
 }
 
@@ -29,6 +38,25 @@ func TestNewRegistry_EmptyKeyDefaultsToNodeID(t *testing.T) {
 	}
 	if r.nodeID != 42 {
 		t.Errorf("nodeID = %d, want 42", r.nodeID)
+	}
+}
+
+func TestNewRegistry_CustomEnvKey(t *testing.T) {
+	t.Setenv("MY_NODE_ID", "7")
+	r, err := NewRegistry("MY_NODE_ID")
+	if err != nil {
+		t.Fatalf("NewRegistry(\"MY_NODE_ID\") error = %v", err)
+	}
+	if r.nodeID != 7 {
+		t.Errorf("nodeID = %d, want 7", r.nodeID)
+	}
+}
+
+func TestNewRegistry_CustomEnvKey_NotSet(t *testing.T) {
+	t.Setenv("MY_NODE_ID", "")
+	_, err := NewRegistry("MY_NODE_ID")
+	if !errors.Is(err, ErrEnvNodeIDNotSet) {
+		t.Errorf("NewRegistry(\"MY_NODE_ID\") error = %v, want ErrEnvNodeIDNotSet", err)
 	}
 }
 
