@@ -36,7 +36,7 @@ type Registry struct {
 // 12-bit node field). The registry does not touch Redis until Acquire is called.
 func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Registry, error) {
 	if client == nil {
-		return nil, fmt.Errorf("redis client cannot be nil")
+		return nil, ErrNilClient
 	}
 	if maxNodeID < 0 {
 		return nil, ErrInvalidMaxNodeID
