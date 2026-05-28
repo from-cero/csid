@@ -16,7 +16,7 @@ type Node struct {
 	closed  bool              // indicates whether the Node is closed
 	cfg     config            // configuration for this Node
 	comF    compiledFormat    // precomputed values for bit manipulation based on cfg.Format
-	reg     registry.Registry // registry for acquiring and releasing nodeID ID
+	reg     registry.Registry // registry for acquiring and releasing nodeID
 	epochMs int64             // epoch in milliseconds since Unix epoch
 	nodeID  int64             // the identity acquired from registry
 	lastMs  int64             // the timestamp in milliseconds of the last generated ID
