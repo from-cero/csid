@@ -4,7 +4,7 @@ import "errors"
 
 var (
 	// ErrInvalidBitFormat is returned when
-	// Format.TimestampBits + Format.NodeBits + Format.SequenceBits + ... != 63.
+	// format.timestampBits + format.nodeBits + format.sequenceBits + ... != 63.
 	ErrInvalidBitFormat = errors.New("bit format must sum to 63")
 
 	// ErrNilRegistry is returned when
@@ -12,7 +12,7 @@ var (
 	ErrNilRegistry = errors.New("registry cannot be nil")
 
 	// ErrInvalidNodeID is returned when
-	// the node ID acquired is out of range for the given Format.NodeBits.
+	// the node ID acquired is out of range for the given format.nodeBits.
 	ErrInvalidNodeID = errors.New("node id is out of range for the given format")
 
 	// ErrNodeClosed is returned when
@@ -28,7 +28,7 @@ var (
 	ErrTimestampOverflow = errors.New("timestamp exceeds maximum for the given format")
 
 	// ErrClockBackward is returned when
-	// the system clock drifts backward beyond Config.MaxClockDrift.
+	// the system clock drifts backward beyond config.maxClockDrift.
 	// This error is retriable: the caller may call Generate again after a short wait.
 	ErrClockBackward = errors.New("clock moved backward beyond tolerance")
 
