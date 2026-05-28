@@ -8,15 +8,15 @@ import (
 func TestFormat_validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		f       Format
+		f       format
 		wantErr error
 	}{
-		{"default layout", Format{41, 12, 10}, nil},
-		{"custom valid", Format{40, 13, 10}, nil},
-		{"sum too low", Format{10, 10, 10}, ErrInvalidBitFormat},
-		{"sum too high", Format{41, 12, 11}, ErrInvalidBitFormat},
-		{"all zeros", Format{0, 0, 0}, ErrInvalidBitFormat},
-		{"single field", Format{63, 0, 0}, nil},
+		{"default layout", format{41, 12, 10}, nil},
+		{"custom valid", format{40, 13, 10}, nil},
+		{"sum too low", format{10, 10, 10}, ErrInvalidBitFormat},
+		{"sum too high", format{41, 12, 11}, ErrInvalidBitFormat},
+		{"all zeros", format{0, 0, 0}, ErrInvalidBitFormat},
+		{"single field", format{63, 0, 0}, nil},
 	}
 	for _, tc := range tests {
 		t.Run(
@@ -31,7 +31,7 @@ func TestFormat_validate(t *testing.T) {
 }
 
 func TestFormat_compileFormat(t *testing.T) {
-	c := DefaultFormat.compileFormat()
+	c := defaultFormat.compileFormat()
 
 	// DefaultFormat: 41 timestamp, 12 node, 10 sequence
 	// shiftNode = sequenceBits = 10
@@ -54,7 +54,7 @@ func TestFormat_compileFormat(t *testing.T) {
 }
 
 func TestFormat_compileFormat_Custom(t *testing.T) {
-	f := Format{TimestampBits: 30, NodeBits: 23, SequenceBits: 10}
+	f := format{timestampBits: 30, nodeBits: 23, sequenceBits: 10}
 	c := f.compileFormat()
 
 	if c.shiftNode != 10 {

@@ -14,7 +14,7 @@ import (
 type Node struct {
 	mu      sync.Mutex        // protects shared states when Node.Generate of same Node runs on multiple goroutines
 	closed  bool              // indicates whether the Node is closed
-	cfg     Config            // configuration for this Node
+	cfg     config            // configuration for this Node
 	comF    compiledFormat    // precomputed values for bit manipulation based on cfg.Format
 	reg     registry.Registry // registry for acquiring and releasing nodeID ID
 	epochMs int64             // epoch in milliseconds since Unix epoch
@@ -28,11 +28,11 @@ type Node struct {
 // the previous run. Go runtime init alone takes >1ms, making this impossible in practice.
 func New(ctx context.Context, reg registry.Registry, opt ...Option) (*Node, error) {
 	cfg := applyOptions(opt)
-	if err := cfg.Format.validate(); err != nil {
+	if err := cfg.format.validate(); err != nil {
 		return nil, err
 	}
-	comF := cfg.Format.compileFormat()
-	epochMs := cfg.Epoch.UnixMilli()
+	comF := cfg.format.compileFormat()
+	epochMs := cfg.epoch.UnixMilli()
 
 	if reg == nil {
 		return nil, ErrNilRegistry
@@ -105,7 +105,7 @@ func (n *Node) Generate() (ID, error) {
 	}
 
 	if now < n.lastMs { // clock backward issue
-		if n.lastMs-now > n.cfg.MaxClockDrift.Milliseconds() {
+		if n.lastMs-now > n.cfg.maxClockDrift.Milliseconds() {
 			return 0, ErrClockBackward
 		}
 		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
@@ -123,7 +123,7 @@ func (n *Node) Generate() (ID, error) {
 		n.seq = (n.seq + 1) & n.comF.maxSeq // increase sequence and wrap around if exceeds max
 		if n.seq == 0 {                     // sequence exhausted (wrapped around) for this ms
 			for now <= n.lastMs {
-				if n.cfg.YieldOnExhaustion {
+				if n.cfg.yieldOnExhaustion {
 					runtime.Gosched()
 				} else {
 					time.Sleep(time.Millisecond)

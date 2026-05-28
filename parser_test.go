@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewParser_InvalidFormat(t *testing.T) {
-	p, err := NewParser(WithFormat(Format{1, 1, 1}))
+	p, err := NewParser(WithFormat(WithTimestampBits(1), WithNodeBits(1), WithSequenceBits(1)))
 	if !errors.Is(err, ErrInvalidBitFormat) {
 		t.Errorf("NewParser() = %v, want ErrInvalidBitFormat", err)
 	}
