@@ -27,8 +27,8 @@ type Node struct {
 // New creates a new Node, acquiring a node ID from the provided registry.Registry.
 // Restart safety: seq resets to 0 on each New, but a collision requires a full restart within 1ms of
 // the previous run. Go runtime init alone takes >1ms, making this impossible in practice.
-func New(ctx context.Context, reg registry.Registry, opt ...Option) (*Node, error) {
-	cfg := applyOptions(opt)
+func New(ctx context.Context, reg registry.Registry, opts ...Option) (*Node, error) {
+	cfg := applyOptions(opts)
 	if err := cfg.format.validate(); err != nil {
 		return nil, err
 	}

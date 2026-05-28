@@ -9,8 +9,8 @@ type Parser struct {
 }
 
 // NewParser creates a Parser configured with the given options.
-func NewParser(opt ...Option) (*Parser, error) {
-	cfg := applyOptions(opt)
+func NewParser(opts ...Option) (*Parser, error) {
+	cfg := applyOptions(opts)
 	if err := cfg.format.validate(); err != nil {
 		return nil, err
 	}
