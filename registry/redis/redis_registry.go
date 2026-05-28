@@ -34,7 +34,7 @@ type Registry struct {
 // NewRegistry creates a Registry. The caller provides a pre-configured
 // Redis client and the inclusive upper bound of valid node IDs (e.g. 4095 for a
 // 12-bit node field). The registry does not touch Redis until Acquire is called.
-func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Registry, error) {
+func NewRegistry(client *goredis.Client, maxNodeID int64, opts ...Option) (*Registry, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
@@ -43,7 +43,7 @@ func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Regis
 	}
 
 	cfg := defaultConfig()
-	for _, o := range opt {
+	for _, o := range opts {
 		o(&cfg)
 	}
 	if cfg.ttl <= 3*cfg.heartbeatInterval {
