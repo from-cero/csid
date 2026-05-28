@@ -84,7 +84,7 @@ func (n *Node) Close(ctx context.Context) error {
 //
 // NOTES:
 //   - In practice, clock backward and sequence exhaustion should be extremely rare if the system is properly provisioned and monitored.
-//   - If it hits seq exhaustion often enough that the lock matters, it need more nodes.
+//   - If it hits seq exhaustion often enough that the lock matters, it needs more nodes.
 //   - That why it isn't designed to have a smarter lock or lock-free strategy and face the complexity of handling edge cases.
 //   - The current design is simpler and good enough for the expected use cases.
 func (n *Node) Generate() (ID, error) {

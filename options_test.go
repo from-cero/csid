@@ -55,11 +55,13 @@ func TestWithYieldOnExhaustion(t *testing.T) {
 
 func TestApplyOptions_MultipleOptions(t *testing.T) {
 	e := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
-	cfg := applyOptions([]Option{
-		WithEpoch(e),
-		WithMaxClockDrift(5 * time.Millisecond),
-		WithYieldOnExhaustion(true),
-	})
+	cfg := applyOptions(
+		[]Option{
+			WithEpoch(e),
+			WithMaxClockDrift(5 * time.Millisecond),
+			WithYieldOnExhaustion(true),
+		},
+	)
 	if !cfg.Epoch.Equal(e) {
 		t.Errorf("Epoch = %v, want %v", cfg.Epoch, e)
 	}
