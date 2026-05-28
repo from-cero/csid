@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/from-cero/csid"
-	"github.com/from-cero/csid/registry"
+	"github.com/from-cero/csid/registry/static"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	r, err := registry.NewStaticRegistry()
+	r, err := static.NewRegistry("NODE_ID")
 	if err != nil {
 		log.Fatalf("failed to create registry: %v", err)
 	}
