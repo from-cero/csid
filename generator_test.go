@@ -41,7 +41,7 @@ func TestNew_NilRegistry(t *testing.T) {
 
 func TestNew_InvalidFormat(t *testing.T) {
 	r := &mockRegistry{nodeID: 0}
-	_, err := New(context.Background(), r, WithFormat(Format{1, 1, 1}))
+	_, err := New(context.Background(), r, WithFormat(WithTimestampBits(1), WithNodeBits(1), WithSequenceBits(1)))
 	if !errors.Is(err, ErrInvalidBitFormat) {
 		t.Errorf("New(bad format) = %v, want ErrInvalidBitFormat", err)
 	}
@@ -125,8 +125,12 @@ func TestNode_Generate_TimestampOverflow(t *testing.T) {
 	// Epoch 100 years ago -> ms count will be enormous
 	r := &mockRegistry{nodeID: 0}
 	oldEpoch := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
-	f := Format{TimestampBits: 3, NodeBits: 10, SequenceBits: 50}
-	n := newTestNode(t, r, WithFormat(f), WithEpoch(oldEpoch))
+	n := newTestNode(
+		t,
+		r,
+		WithFormat(WithTimestampBits(3), WithNodeBits(10), WithSequenceBits(50)),
+		WithEpoch(oldEpoch),
+	)
 	_, err := n.Generate()
 	if !errors.Is(err, ErrTimestampOverflow) {
 		t.Errorf("Generate() = %v, want ErrTimestampOverflow", err)

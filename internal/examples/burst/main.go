@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
+	"github.com/HdrHistogram/hdrhistogram-go"
 
 	"github.com/from-cero/csid"
 )
@@ -29,8 +29,10 @@ func main() {
 	}
 	perWorker := *targetPerNode / *goroutinesPerNode
 
-	fmt.Printf("nodes: %d, goroutines-per-node: %d, target-per-node: %d, yield-on-exhaustion: %v\n",
-		*nodes, *goroutinesPerNode, *targetPerNode, *yieldOnExhaustion)
+	fmt.Printf(
+		"nodes: %d, goroutines-per-node: %d, target-per-node: %d, yield-on-exhaustion: %v\n",
+		*nodes, *goroutinesPerNode, *targetPerNode, *yieldOnExhaustion,
+	)
 	fmt.Printf("target: %d\n\n", *nodes**targetPerNode)
 
 	ctx := context.Background()
@@ -81,7 +83,10 @@ func main() {
 	elapsed := time.Since(start)
 
 	for _, node := range nodeList {
-		node.Close(ctx)
+		err := node.Close(ctx)
+		if err != nil {
+			log.Fatalf("failed to close node %v: %v", node, err)
+		}
 	}
 
 	seen := make(map[csid.ID]struct{}, total)
@@ -103,15 +108,12 @@ func main() {
 		}
 	}
 
-	theoreticalMaxPerMs := int64(*nodes) * (int64(1) << csid.DefaultFormat.SequenceBits)
-
 	fmt.Printf("generated : %d IDs\n", total)
 	fmt.Printf("duration  : %s\n", elapsed)
 	fmt.Printf(
-		"throughput: %.0f IDs/s, %.0f IDs/ms (max %d IDs/ms)\n",
+		"throughput: %.0f IDs/s, %.0f IDs/ms\n",
 		float64(total)/elapsed.Seconds(),
 		float64(total)/float64(elapsed.Milliseconds()),
-		theoreticalMaxPerMs,
 	)
 	fmt.Printf("duplicates: none\n")
 	fmt.Printf("latency p50: %d ns\n", hist.ValueAtQuantile(50))
