@@ -5,21 +5,6 @@ import "time"
 // Option is a functional option for RedisRegistry.
 type Option func(*config)
 
-type config struct {
-	keyPrefix          string
-	ttl                time.Duration
-	heartbeatInterval  time.Duration
-	onHeartbeatFailure func(err error)
-}
-
-func defaultConfig() config {
-	return config{
-		keyPrefix:         "csid:node",
-		ttl:               30 * time.Second,
-		heartbeatInterval: 10 * time.Second,
-	}
-}
-
 // WithKeyPrefix sets the Redis key prefix (default: "csid:node").
 // Use this when multiple generator clusters share one Redis instance.
 func WithKeyPrefix(prefix string) Option {
@@ -42,4 +27,19 @@ func WithHeartbeatInterval(d time.Duration) Option {
 // tolerated until the TTL expires.
 func WithOnHeartbeatFailure(fn func(error)) Option {
 	return func(c *config) { c.onHeartbeatFailure = fn }
+}
+
+type config struct {
+	keyPrefix          string
+	ttl                time.Duration
+	heartbeatInterval  time.Duration
+	onHeartbeatFailure func(err error)
+}
+
+func defaultConfig() config {
+	return config{
+		keyPrefix:         "csid:node",
+		ttl:               30 * time.Second,
+		heartbeatInterval: 10 * time.Second,
+	}
 }

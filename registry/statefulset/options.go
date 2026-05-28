@@ -1,19 +1,11 @@
 package statefulset
 
-import "os"
+import (
+	"os"
+)
 
 // Option is a functional option for Registry.
 type Option func(*config)
-
-type config struct {
-	podNameFn func() (string, error)
-}
-
-func defaultConfig() config {
-	return config{
-		podNameFn: os.Hostname,
-	}
-}
 
 // WithPodName sets a fixed pod name instead of reading os.Hostname.
 // Useful for testing or when the pod name is injected via an environment variable
@@ -28,4 +20,14 @@ func WithPodName(name string) Option {
 // The function is called once per Acquire.
 func WithPodNameFunc(fn func() (string, error)) Option {
 	return func(c *config) { c.podNameFn = fn }
+}
+
+type config struct {
+	podNameFn func() (string, error)
+}
+
+func defaultConfig() config {
+	return config{
+		podNameFn: os.Hostname,
+	}
 }
