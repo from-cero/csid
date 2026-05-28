@@ -14,9 +14,8 @@ var (
 	// heartbeat Lua script detects the key was deleted or overwritten by another instance.
 	ErrOwnershipLost = errors.New("node ID ownership lost: key expired or taken by another instance")
 
-	// ErrInvalidConfig is returned when constructor options are inconsistent
-	// (e.g. TTL is not greater than 3x heartbeat interval).
-	ErrInvalidConfig = errors.New("invalid redis registry config: ttl must be greater than 3x heartbeat interval")
+	// ErrInvalidTTLConfig is returned when TTL is not greater than 3x heartbeat interval.
+	ErrInvalidTTLConfig = errors.New("invalid redis registry config: ttl must be greater than 3x heartbeat interval")
 
 	// ErrInvalidMaxNodeID is returned when maxNodeID is negative.
 	ErrInvalidMaxNodeID = errors.New("maxNodeID must be >= 0")

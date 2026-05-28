@@ -47,7 +47,7 @@ func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Regis
 		o(&cfg)
 	}
 	if cfg.ttl <= 3*cfg.heartbeatInterval {
-		return nil, ErrInvalidConfig
+		return nil, ErrInvalidTTLConfig
 	}
 
 	ownerID, err := generateOwnerID()
@@ -70,9 +70,8 @@ func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Regis
 func (r *Registry) Acquire(ctx context.Context) (int64, error) {
 	r.mu.Lock()
 	if r.nodeID != -1 {
-		id := r.nodeID
 		r.mu.Unlock()
-		return id, nil
+		return r.nodeID, nil
 	}
 	if r.acquiring {
 		r.mu.Unlock()
@@ -122,8 +121,8 @@ func (r *Registry) Release(ctx context.Context) error {
 	hbDone := r.hbDone
 	r.mu.Unlock()
 
-	stopHB()
-	<-hbDone
+	stopHB() // signal the heartbeat goroutine to stop
+	<-hbDone // wait for heartbeat goroutine to exit before deleting the key
 
 	key := r.nodeKey(id)
 	_, err := releaseScript.Run(ctx, r.client, []string{key}, r.ownerID).Int64()

@@ -64,7 +64,7 @@ func TestNewRegistry_InvalidConfig_TTLTooShort(t *testing.T) {
 		csidredis.WithTTL(20*time.Second),
 		csidredis.WithHeartbeatInterval(10*time.Second), // 3x = 30s > 20s
 	)
-	if !errors.Is(err, csidredis.ErrInvalidConfig) {
+	if !errors.Is(err, csidredis.ErrInvalidTTLConfig) {
 		t.Errorf("error = %v, want ErrInvalidConfig", err)
 	}
 }
@@ -429,7 +429,7 @@ func TestNewRegistry_TTLExactlyThreeTimesHeartbeat(t *testing.T) {
 		csidredis.WithTTL(30*time.Second),
 		csidredis.WithHeartbeatInterval(10*time.Second), // 3x = 30s == TTL, not >
 	)
-	if !errors.Is(err, csidredis.ErrInvalidConfig) {
+	if !errors.Is(err, csidredis.ErrInvalidTTLConfig) {
 		t.Errorf("error = %v, want ErrInvalidConfig when TTL == 3x heartbeat", err)
 	}
 }
@@ -480,12 +480,14 @@ func TestHeartbeat_TransientError_CallbackFiredAndContinues(t *testing.T) {
 		client, 4,
 		csidredis.WithTTL(500*time.Millisecond),
 		csidredis.WithHeartbeatInterval(100*time.Millisecond),
-		csidredis.WithOnHeartbeatFailure(func(cbErr error) {
-			select {
-			case callbackErrs <- cbErr:
-			default:
-			}
-		}),
+		csidredis.WithOnHeartbeatFailure(
+			func(cbErr error) {
+				select {
+				case callbackErrs <- cbErr:
+				default:
+				}
+			},
+		),
 	)
 	if err != nil {
 		t.Fatalf("NewRegistry() error = %v", err)
