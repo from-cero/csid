@@ -13,12 +13,12 @@ import (
 // All methods are safe for concurrent use.
 type Node struct {
 	mu      sync.Mutex        // protects shared states when Node.Generate of same Node runs on multiple goroutines
+	reg     registry.Registry // registry for acquiring and releasing nodeID
+	nodeID  int64             // the identity acquired from registry
 	closed  bool              // indicates whether the Node is closed
 	cfg     config            // configuration for this Node
 	comF    compiledFormat    // precomputed values for bit manipulation based on cfg.Format
-	reg     registry.Registry // registry for acquiring and releasing nodeID
 	epochMs int64             // epoch in milliseconds since Unix epoch
-	nodeID  int64             // the identity acquired from registry
 	lastMs  int64             // the timestamp in milliseconds of the last generated ID
 	seq     int64             // the sequence number for IDs generated within the same millisecond
 }
