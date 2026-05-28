@@ -12,15 +12,16 @@ import (
 // Node is a distributed ID generator bound to a single node ID acquired from a registry.Registry.
 // All methods are safe for concurrent use.
 type Node struct {
-	mu      sync.Mutex        // protects shared states when Node.Generate of same Node runs on multiple goroutines
 	reg     registry.Registry // registry for acquiring and releasing nodeID
-	nodeID  int64             // the identity acquired from registry
-	closed  bool              // indicates whether the Node is closed
 	cfg     config            // configuration for this Node
 	comF    compiledFormat    // precomputed values for bit manipulation based on cfg.Format
+	nodeID  int64             // the identity acquired from registry
 	epochMs int64             // epoch in milliseconds since Unix epoch
-	lastMs  int64             // the timestamp in milliseconds of the last generated ID
-	seq     int64             // the sequence number for IDs generated within the same millisecond
+
+	mu     sync.Mutex // protects shared states when Node.Generate of same Node runs on multiple goroutines
+	closed bool       // indicates whether the Node is closed
+	lastMs int64      // the timestamp in milliseconds of the last generated ID
+	seq    int64      // the sequence number for IDs generated within the same millisecond
 }
 
 // New creates a new Node, acquiring a node ID from the provided registry.Registry.
