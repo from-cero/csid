@@ -39,8 +39,8 @@ var defaultFormat = format{
 
 func applyFormatOptions(opts []FormatOption) format {
 	res := defaultFormat
-	for _, o := range opts {
-		o(&res)
+	for _, opt := range opts {
+		opt(&res)
 	}
 	return res
 }

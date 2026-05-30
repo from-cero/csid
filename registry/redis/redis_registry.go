@@ -43,8 +43,8 @@ func NewRegistry(client *goredis.Client, maxNodeID int64, opts ...Option) (*Regi
 	}
 
 	cfg := defaultConfig()
-	for _, o := range opts {
-		o(&cfg)
+	for _, opt := range opts {
+		opt(&cfg)
 	}
 	if cfg.ttl <= 3*cfg.heartbeatInterval {
 		return nil, ErrInvalidTTLConfig
