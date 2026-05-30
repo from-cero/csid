@@ -19,31 +19,31 @@ import (
 // If a process dies without releasing, the slot is reclaimed automatically when
 // the TTL expires. All methods are safe for concurrent use.
 type Registry struct {
+	mu        sync.Mutex
+	nodeID    int64 // -1 means not yet acquired
+	acquiring bool  // true while a Redis Acquire call is in flight
+
 	client  *goredis.Client
 	cfg     config
 	maxNode int64
-	ownerID string // unique per-process identity stored as the Redis value
-
-	mu        sync.Mutex
-	nodeID    int64              // -1 means not yet acquired
-	acquiring bool               // true while a Redis Acquire call is in flight
-	stopHB    context.CancelFunc // cancels the heartbeat goroutine
-	hbDone    chan struct{}      // closed when the heartbeat goroutine exits
+	ownerID string             // unique per-process identity stored as the Redis value
+	stopHB  context.CancelFunc // cancels the heartbeat goroutine
+	hbDone  chan struct{}      // closed when the heartbeat goroutine exits
 }
 
 // NewRegistry creates a Registry. The caller provides a pre-configured
 // Redis client and the inclusive upper bound of valid node IDs (e.g. 4095 for a
 // 12-bit node field). The registry does not touch Redis until Acquire is called.
-func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Registry, error) {
+func NewRegistry(client *goredis.Client, maxNodeID int64, opts ...Option) (*Registry, error) {
 	if client == nil {
-		return nil, fmt.Errorf("redis client cannot be nil")
+		return nil, ErrNilClient
 	}
 	if maxNodeID < 0 {
 		return nil, ErrInvalidMaxNodeID
 	}
 
 	cfg := defaultConfig()
-	for _, o := range opt {
+	for _, o := range opts {
 		o(&cfg)
 	}
 	if cfg.ttl <= 3*cfg.heartbeatInterval {
@@ -56,11 +56,11 @@ func NewRegistry(client *goredis.Client, maxNodeID int64, opt ...Option) (*Regis
 	}
 
 	return &Registry{
+		nodeID:  -1,
 		client:  client,
 		cfg:     cfg,
 		maxNode: maxNodeID,
 		ownerID: ownerID,
-		nodeID:  -1,
 	}, nil
 }
 
