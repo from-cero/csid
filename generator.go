@@ -141,7 +141,7 @@ func (n *Node) Generate() (ID, error) {
 	n.lastMs = now
 
 	var idI64 int64
-	idI64 |= (now & n.comF.maxTimestamp) << n.comF.shiftTimestamp
+	idI64 |= now << n.comF.shiftTimestamp
 	idI64 |= n.nodeID << n.comF.shiftNode
 	idI64 |= n.seq
 	return ID(idI64), nil
