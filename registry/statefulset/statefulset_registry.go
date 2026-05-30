@@ -80,8 +80,8 @@ type Registry struct {
 // until Acquire is called.
 func NewRegistry(opts ...Option) *Registry {
 	cfg := defaultConfig()
-	for _, o := range opts {
-		o(&cfg)
+	for _, opt := range opts {
+		opt(&cfg)
 	}
 	return &Registry{
 		nodeID: -1,

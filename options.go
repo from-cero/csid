@@ -42,8 +42,8 @@ var defaultConfig = config{
 
 func applyOptions(opts []Option) config {
 	cfg := defaultConfig
-	for _, o := range opts {
-		o(&cfg)
+	for _, opt := range opts {
+		opt(&cfg)
 	}
 	return cfg
 }
