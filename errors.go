@@ -3,9 +3,19 @@ package csid
 import "errors"
 
 var (
+	ErrInvalidConfig = errors.New("invalid config")
+
 	// ErrInvalidBitFormat is returned when
 	// format.timestampBits + format.nodeBits + format.sequenceBits + ... != 63.
 	ErrInvalidBitFormat = errors.New("bit format must sum to 63")
+
+	// ErrEpochInFuture is returned when
+	// config.epoch is the time after the current system time at the time of Node creation.
+	ErrEpochInFuture = errors.New("epoch in future")
+
+	// ErrMaxClockDrift is returned when
+	// config.maxClockDrift is negative.
+	ErrMaxClockDrift = errors.New("maxClockDrift is negative")
 
 	// ErrNilRegistry is returned when
 	// New is called with a nil Registry.

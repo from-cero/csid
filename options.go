@@ -1,6 +1,10 @@
 package csid
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // Option is a functional option for configuring.
 type Option func(*config)
@@ -42,4 +46,22 @@ func applyOptions(opts []Option) config {
 		o(&cfg)
 	}
 	return cfg
+}
+
+func (c *config) validate() error {
+	var errs []string
+	if err := c.format.validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
+	if c.epoch.After(time.Now()) {
+		errs = append(errs, ErrEpochInFuture.Error())
+	}
+	if c.maxClockDrift < 0 {
+		errs = append(errs, ErrMaxClockDrift.Error())
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%w: %s", ErrInvalidConfig, strings.Join(errs, ", "))
+	}
+	return nil
 }

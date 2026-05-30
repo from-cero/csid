@@ -29,7 +29,7 @@ type Node struct {
 // the previous run. Go runtime init alone takes >1ms, making this impossible in practice.
 func New(ctx context.Context, reg registry.Registry, opts ...Option) (*Node, error) {
 	cfg := applyOptions(opts)
-	if err := cfg.format.validate(); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	comF := cfg.format.compileFormat()

@@ -45,7 +45,7 @@ func applyFormatOptions(opts []FormatOption) format {
 	return res
 }
 
-func (f format) validate() error {
+func (f *format) validate() error {
 	sum := int(f.timestampBits) + int(f.nodeBits) + int(f.sequenceBits)
 	if sum != 63 {
 		return ErrInvalidBitFormat
@@ -61,7 +61,7 @@ type compiledFormat struct {
 	maxSeq         int64
 }
 
-func (f format) compileFormat() compiledFormat {
+func (f *format) compileFormat() compiledFormat {
 	sn := f.sequenceBits
 	st := sn + f.nodeBits
 	mask := func(bits uint8) int64 {
