@@ -1,12 +1,12 @@
 package csid
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 )
 
-// Option is a functional option for configuring.
+// Option configures a Node, Parser at creation time.
 type Option func(*config)
 
 // WithFormat sets the bit layout for IDs.
@@ -49,19 +49,16 @@ func applyOptions(opts []Option) config {
 }
 
 func (c *config) validate() error {
-	var errs []string
+	var errs []error
 	if err := c.format.validate(); err != nil {
-		errs = append(errs, err.Error())
-	}
-	if c.epoch.After(time.Now()) {
-		errs = append(errs, ErrEpochInFuture.Error())
+		errs = append(errs, err)
 	}
 	if c.maxClockDrift < 0 {
-		errs = append(errs, ErrMaxClockDrift.Error())
+		errs = append(errs, ErrMaxClockDrift)
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("%w: %s", ErrInvalidConfig, strings.Join(errs, ", "))
+		return fmt.Errorf("%w: %w", ErrInvalidConfig, errors.Join(errs...))
 	}
 	return nil
 }
