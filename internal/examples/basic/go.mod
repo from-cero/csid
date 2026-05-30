@@ -1,4 +1,4 @@
-module github.com/from-cero/csid/examples/basic
+module github.com/from-cero/csid/examples/burst
 
 go 1.26
 

@@ -1,13 +1,17 @@
 package csid
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"time"
+)
 
-// Option is a functional option for configuring.
+// Option configures a Node or Parser at creation time.
 type Option func(*config)
 
 // WithFormat sets the bit layout for IDs.
-func WithFormat(fOpts ...FormatOption) Option {
-	return func(c *config) { c.format = applyFormatOptions(fOpts) }
+func WithFormat(opts ...FormatOption) Option {
+	return func(c *config) { c.format = applyFormatOptions(opts) }
 }
 
 // WithEpoch sets the custom epoch used as the zero time for timestamps.
@@ -42,4 +46,19 @@ func applyOptions(opts []Option) config {
 		o(&cfg)
 	}
 	return cfg
+}
+
+func (c *config) validate() error {
+	var errs []error
+	if err := c.format.validate(); err != nil {
+		errs = append(errs, err)
+	}
+	if c.maxClockDrift < 0 {
+		errs = append(errs, ErrMaxClockDrift)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%w: %w", ErrInvalidConfig, errors.Join(errs...))
+	}
+	return nil
 }

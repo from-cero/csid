@@ -21,11 +21,11 @@ func main() {
 	}
 
 	ctx := context.Background()
-	r, err := static.NewRegistry("NODE_ID")
+	reg, err := static.NewRegistry("NODE_ID")
 	if err != nil {
 		log.Fatalf("failed to create registry: %v", err)
 	}
-	node, err := csid.New(ctx, r)
+	node, err := csid.New(ctx, reg)
 	if err != nil {
 		log.Fatalf("failed to create node: %v", err)
 	}
