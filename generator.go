@@ -95,31 +95,31 @@ func (n *Node) Generate() (ID, error) {
 
 	// if node is closed, any on-flight generate calls should stop
 	if n.closed {
-		return 0, ErrNodeClosed
+		return ID(-1), ErrNodeClosed
 	}
 
 	now := n.nowMs() // milliseconds since epoch
 	if now < 0 {
-		return 0, ErrClockBeforeEpoch
+		return ID(-1), ErrClockBeforeEpoch
 	}
 	if now > n.comF.maxTimestamp {
-		return 0, ErrTimestampOverflow
+		return ID(-1), ErrTimestampOverflow
 	}
 
 	if now < n.lastMs { // clock backward issue
 		if n.lastMs-now > n.cfg.maxClockDrift.Milliseconds() {
-			return 0, ErrClockBackward
+			return ID(-1), ErrClockBackward
 		}
 		time.Sleep(time.Duration(n.lastMs-now) * time.Millisecond)
 		now = n.nowMs()
 	}
 
 	if now < 0 {
-		return 0, ErrClockBeforeEpoch
+		return ID(-1), ErrClockBeforeEpoch
 	}
 	// check whether now still be behind n.lastMs
 	if now < n.lastMs {
-		return 0, ErrClockSyncFailed
+		return ID(-1), ErrClockSyncFailed
 	}
 	if now == n.lastMs {
 		n.seq = (n.seq + 1) & n.comF.maxSeq // increase sequence and wrap around if exceeds max
@@ -137,7 +137,7 @@ func (n *Node) Generate() (ID, error) {
 		n.seq = 0
 	}
 	if now > n.comF.maxTimestamp {
-		return 0, ErrTimestampOverflow
+		return ID(-1), ErrTimestampOverflow
 	}
 	n.lastMs = now
 
