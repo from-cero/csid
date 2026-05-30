@@ -70,9 +70,10 @@ import (
 // If your workload cannot tolerate any duplicate IDs, use the Redis registry
 // instead. See DUPLICATE_NODE_ID_RISKS.md for the full risk breakdown.
 type Registry struct {
-	cfg    config
 	mu     sync.Mutex
 	nodeID int64 // -1 means not yet acquired
+
+	cfg config
 }
 
 // NewRegistry creates a Registry. The registry does not read the hostname
@@ -83,8 +84,8 @@ func NewRegistry(opts ...Option) *Registry {
 		o(&cfg)
 	}
 	return &Registry{
-		cfg:    cfg,
 		nodeID: -1,
+		cfg:    cfg,
 	}
 }
 

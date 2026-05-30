@@ -19,16 +19,16 @@ import (
 // If a process dies without releasing, the slot is reclaimed automatically when
 // the TTL expires. All methods are safe for concurrent use.
 type Registry struct {
+	mu        sync.Mutex
+	nodeID    int64 // -1 means not yet acquired
+	acquiring bool  // true while a Redis Acquire call is in flight
+
 	client  *goredis.Client
 	cfg     config
 	maxNode int64
-	ownerID string // unique per-process identity stored as the Redis value
-
-	mu        sync.Mutex
-	nodeID    int64              // -1 means not yet acquired
-	acquiring bool               // true while a Redis Acquire call is in flight
-	stopHB    context.CancelFunc // cancels the heartbeat goroutine
-	hbDone    chan struct{}      // closed when the heartbeat goroutine exits
+	ownerID string             // unique per-process identity stored as the Redis value
+	stopHB  context.CancelFunc // cancels the heartbeat goroutine
+	hbDone  chan struct{}      // closed when the heartbeat goroutine exits
 }
 
 // NewRegistry creates a Registry. The caller provides a pre-configured
@@ -56,11 +56,11 @@ func NewRegistry(client *goredis.Client, maxNodeID int64, opts ...Option) (*Regi
 	}
 
 	return &Registry{
+		nodeID:  -1,
 		client:  client,
 		cfg:     cfg,
 		maxNode: maxNodeID,
 		ownerID: ownerID,
-		nodeID:  -1,
 	}, nil
 }
 
