@@ -44,8 +44,8 @@ func newTestRegistry(
 
 func TestNewRegistry_NilClient(t *testing.T) {
 	_, err := csidredis.NewRegistry(nil, 4095)
-	if err == nil {
-		t.Error("expected error for nil client, got nil")
+	if !errors.Is(err, csidredis.ErrNilClient) {
+		t.Errorf("error = %v, want ErrNilClient", err)
 	}
 }
 
