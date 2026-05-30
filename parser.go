@@ -11,7 +11,7 @@ type Parser struct {
 // NewParser creates a Parser configured with the given options.
 func NewParser(opts ...Option) (*Parser, error) {
 	cfg := applyOptions(opts)
-	if err := cfg.format.validate(); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	comF := cfg.format.compileFormat()
