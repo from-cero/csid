@@ -6,8 +6,8 @@ import "time"
 type Option func(*config)
 
 // WithFormat sets the bit layout for IDs.
-func WithFormat(fOpts ...FormatOption) Option {
-	return func(c *config) { c.format = applyFormatOptions(fOpts) }
+func WithFormat(opts ...FormatOption) Option {
+	return func(c *config) { c.format = applyFormatOptions(opts) }
 }
 
 // WithEpoch sets the custom epoch used as the zero time for timestamps.
