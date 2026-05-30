@@ -5,23 +5,23 @@ package csid
 type FormatOption func(*format)
 
 // WithTimestampBits configures the number of bits allocated for the timestamp in the ID.
-func WithTimestampBits(timestampBits uint8) FormatOption {
+func WithTimestampBits(bits uint8) FormatOption {
 	return func(f *format) {
-		f.timestampBits = timestampBits
+		f.timestampBits = bits
 	}
 }
 
 // WithNodeBits configures the number of bits allocated for the node ID in the ID.
-func WithNodeBits(nodeBits uint8) FormatOption {
+func WithNodeBits(bits uint8) FormatOption {
 	return func(f *format) {
-		f.nodeBits = nodeBits
+		f.nodeBits = bits
 	}
 }
 
 // WithSequenceBits configures the number of bits allocated for the sequence number in the ID.
-func WithSequenceBits(sequenceBits uint8) FormatOption {
+func WithSequenceBits(bits uint8) FormatOption {
 	return func(f *format) {
-		f.sequenceBits = sequenceBits
+		f.sequenceBits = bits
 	}
 }
 
@@ -45,7 +45,7 @@ func applyFormatOptions(opts []FormatOption) format {
 	return res
 }
 
-func (f format) validate() error {
+func (f *format) validate() error {
 	sum := int(f.timestampBits) + int(f.nodeBits) + int(f.sequenceBits)
 	if sum != 63 {
 		return ErrInvalidBitFormat
@@ -61,7 +61,7 @@ type compiledFormat struct {
 	maxSeq         int64
 }
 
-func (f format) compileFormat() compiledFormat {
+func (f *format) compileFormat() compiledFormat {
 	sn := f.sequenceBits
 	st := sn + f.nodeBits
 	mask := func(bits uint8) int64 {

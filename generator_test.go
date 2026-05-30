@@ -47,6 +47,14 @@ func TestNew_InvalidFormat(t *testing.T) {
 	}
 }
 
+func TestNew_NegativeMaxClockDrift(t *testing.T) {
+	r := &mockRegistry{nodeID: 0}
+	_, err := New(context.Background(), r, WithMaxClockDrift(-time.Millisecond))
+	if !errors.Is(err, ErrMaxClockDrift) {
+		t.Errorf("New(negative maxClockDrift) = %v, want ErrMaxClockDrift", err)
+	}
+}
+
 func TestNew_AcquireError(t *testing.T) {
 	wantErr := errors.New("acquire failed")
 	r := &mockRegistry{acquireErr: wantErr}
