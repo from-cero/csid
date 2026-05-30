@@ -27,9 +27,9 @@ func WithMaxClockDrift(d time.Duration) Option { return func(c *config) { c.maxC
 func WithYieldOnExhaustion(v bool) Option { return func(c *config) { c.yieldOnExhaustion = v } }
 
 type config struct {
-	format            format        // Default is csid.defaultFormat.
-	epoch             time.Time     // Default is 2026-01-01 00:00:00 UTC.
-	maxClockDrift     time.Duration // Default is 10ms.
+	format            format        // Default is csid.defaultFormat
+	epoch             time.Time     // Default is 2026-01-01 00:00:00 UTC
+	maxClockDrift     time.Duration // Default is 10ms
 	yieldOnExhaustion bool          // Default is false. If true, yield (runtime.Gosched) on sequence exhaustion instead of sleeping.
 }
 
