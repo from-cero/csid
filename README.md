@@ -177,12 +177,12 @@ client := goredis.NewClient(&goredis.Options{Addr: "localhost:6379"})
 // maxNodeID is the inclusive upper bound of valid node IDs
 // (e.g. 4095 for the default 12-bit node field).
 reg, err := redis.NewRegistry(client, 4095,
-redis.WithKeyPrefix("csid:node"),
-redis.WithTTL(30*time.Second),
-redis.WithHeartbeatInterval(10*time.Second),
-redis.WithOnHeartbeatFailure(func (err error) {
-// react to lost ownership or transient Redis errors
-}),
+    redis.WithKeyPrefix("csid:node"),
+    redis.WithTTL(30*time.Second),
+    redis.WithHeartbeatInterval(10*time.Second),
+    redis.WithOnHeartbeatFailure(func (err error) {
+        // react to lost ownership or transient Redis errors
+    }),
 )
 ```
 
