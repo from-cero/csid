@@ -40,12 +40,12 @@ var defaultConfig = config{
 	yieldOnExhaustion: false,
 }
 
-func applyOptions(opts []Option) config {
+func applyOptions(opts []Option) *config {
 	cfg := defaultConfig
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-	return cfg
+	return &cfg
 }
 
 func (c *config) validate() error {

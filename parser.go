@@ -4,7 +4,7 @@ import "time"
 
 // Parser decodes IDs without requiring a running Node.
 type Parser struct {
-	cfg  config
+	cfg  *config
 	comF compiledFormat
 }
 

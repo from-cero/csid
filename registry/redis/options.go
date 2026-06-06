@@ -36,8 +36,8 @@ type config struct {
 	onHeartbeatFailure func(err error)
 }
 
-func defaultConfig() config {
-	return config{
+func defaultConfig() *config {
+	return &config{
 		keyPrefix:         "csid:node",
 		ttl:               30 * time.Second,
 		heartbeatInterval: 10 * time.Second,

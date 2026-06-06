@@ -73,7 +73,7 @@ type Registry struct {
 	mu     sync.Mutex
 	nodeID int64 // -1 means not yet acquired
 
-	cfg config
+	cfg *config
 }
 
 // NewRegistry creates a Registry. The registry does not read the hostname
@@ -81,7 +81,7 @@ type Registry struct {
 func NewRegistry(opts ...Option) *Registry {
 	cfg := defaultConfig()
 	for _, opt := range opts {
-		opt(&cfg)
+		opt(cfg)
 	}
 	return &Registry{
 		nodeID: -1,
