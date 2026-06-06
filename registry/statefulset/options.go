@@ -26,8 +26,8 @@ type config struct {
 	podNameFn func() (string, error)
 }
 
-func defaultConfig() config {
-	return config{
+func defaultConfig() *config {
+	return &config{
 		podNameFn: os.Hostname,
 	}
 }

@@ -24,7 +24,7 @@ type Registry struct {
 	acquiring bool  // true while a Redis Acquire call is in flight
 
 	client  *goredis.Client
-	cfg     config
+	cfg     *config
 	maxNode int64
 	ownerID string             // unique per-process identity stored as the Redis value
 	stopHB  context.CancelFunc // cancels the heartbeat goroutine
@@ -44,7 +44,7 @@ func NewRegistry(client *goredis.Client, maxNodeID int64, opts ...Option) (*Regi
 
 	cfg := defaultConfig()
 	for _, opt := range opts {
-		opt(&cfg)
+		opt(cfg)
 	}
 	if cfg.ttl <= 3*cfg.heartbeatInterval {
 		return nil, ErrInvalidTTLConfig

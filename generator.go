@@ -17,7 +17,7 @@ type Node struct {
 	lastMs int64      // the timestamp in milliseconds of the last generated ID
 	seq    int64      // the sequence number for IDs generated within the same millisecond
 
-	cfg     config            // configuration for this Node
+	cfg     *config           // configuration for this Node
 	comF    compiledFormat    // precomputed values for bit manipulation based on cfg.Format
 	reg     registry.Registry // registry for acquiring and releasing nodeID
 	nodeID  int64             // the identity acquired from registry
